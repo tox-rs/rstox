@@ -1,0 +1,5 @@
+[package]
+
+name = "rstox"
+version = "0.0.1"
+authors = ["Сухарик <suhr@i2pmail.org>"]
