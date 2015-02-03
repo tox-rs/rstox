@@ -2,10 +2,11 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::{slice, mem, ptr, fmt};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::io::timer::{sleep};
+use std::old_io::timer::{sleep};
 use std::time::duration::Duration;
 use rust_core::str::FromStr;
-use libc::{c_int, c_uint, c_char, c_void};
+use libc::{c_uint, c_void};
+pub use self::ll::Tox as Tox_Struct;
 pub use self::Event::*;
 
 mod ll;
@@ -19,14 +20,14 @@ pub const ADDRESS_SIZE:                 usize = ID_CLIENT_SIZE + 6us;
 pub const AVATAR_MAX_DATA_LENGTH:       usize = 16384us;
 pub const HASH_LENGTH:                  usize = 32us;
 
-#[derive(Copy, Clone, Eq, PartialEq, Show)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[repr(u8)]
 pub enum AvatarFormat {
     None = ll::TOX_AVATAR_FORMAT_NONE as u8,
     PNG = ll::TOX_AVATAR_FORMAT_PNG as u8,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Show)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[repr(u8)]
 pub enum GroupchatType {
     Text = ll::TOX_GROUPCHAT_TYPE_TEXT as u8,
@@ -59,7 +60,7 @@ impl Address {
     }
 }
 
-impl fmt::String for Address {
+impl fmt::Display for Address {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(self.id.fmt(fmt));
         try!(write!(fmt, "{:02X}", self.nospam[0]));
@@ -74,32 +75,33 @@ impl fmt::String for Address {
 }
 
 impl FromStr for Address {
-    fn from_str(s: &str) -> Option<Address> {
+	type Err = ();
+    fn from_str(s: &str) -> Result<Address, ()> {
         if s.len() != 2 * ADDRESS_SIZE {
-            return None;
+            return Err(());
         }
 
         let mut id     = [0u8; 32];
         let mut nospam = [0u8; 4];
         let mut check  = [0u8; 2];
 
-        if parse_hex(s.slice(0, 2*ID_CLIENT_SIZE), id.as_mut_slice()).is_err() {
-            return None;
+        if parse_hex(&s[0..2 * ID_CLIENT_SIZE], id.as_mut_slice()).is_err() {
+            return Err(());
         }
-        if parse_hex(s.slice(2*ID_CLIENT_SIZE, 2*ID_CLIENT_SIZE+8),
+        if parse_hex(&s[2 * ID_CLIENT_SIZE..2 * ID_CLIENT_SIZE + 8],
            nospam.as_mut_slice()).is_err() {
-            return None;
+            return Err(());
         }
-        if parse_hex(s.slice(2*ID_CLIENT_SIZE+8, 2*ADDRESS_SIZE),
+        if parse_hex(&s[2 * ID_CLIENT_SIZE + 8..2 * ADDRESS_SIZE],
            check.as_mut_slice()).is_err() {
-            return None;
+            return Err(());
         }
 
         let addr = Address { id: ClientId { raw: id }, nospam: nospam, checksum: check };
         if addr.checksum().as_slice() != check.as_slice() {
-            return None;
+            return Err(());
         }
-        Some(addr)
+        Ok(addr)
     }
 }
 
@@ -128,7 +130,7 @@ pub struct ClientId {
     pub raw: [u8; ID_CLIENT_SIZE],
 }
 
-impl fmt::String for ClientId {
+impl fmt::Display for ClientId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for &n in self.raw.iter() {
             try!(write!(fmt, "{:02X}", n));
@@ -138,17 +140,16 @@ impl fmt::String for ClientId {
 }
 
 impl FromStr for ClientId {
-    fn from_str(s: &str) -> Option<ClientId> {
+	type Err = ();
+    fn from_str(s: &str) -> Result<ClientId, ()> {
         if s.len() != 2 * ID_CLIENT_SIZE {
-            return None;
+            return Err(());
         }
 
         let mut id = [0u8; ID_CLIENT_SIZE];
 
-        if parse_hex(s, id.as_mut_slice()).is_err() {
-            return None;
-        }
-        Some(ClientId { raw: id })
+        try!(parse_hex(s, id.as_mut_slice()));
+        Ok(ClientId { raw: id })
     }
 }
 
@@ -278,19 +279,19 @@ pub enum ProxyType {
 
 /**
     ToxOptions provides options that tox will be initalized with.
-   
+
     Usage:
     ```
         let txo = ToxOptions::new().ipv6().proxy("[proxy address]", port);
         let tox = Tox::new(txo);
     ```
-    */
-    #[derive(Copy)]
-    pub struct ToxOptions {
-        txo: ll::Tox_Options
-    }
+*/
+#[derive(Copy)]
+pub struct ToxOptions {
+    txo: ll::Tox_Options
+}
 
-    impl ToxOptions {
+impl ToxOptions {
     /// Create a default ToxOptions struct
     pub fn new() -> ToxOptions {
         ToxOptions {
@@ -379,6 +380,7 @@ macro_rules! ok_or_null {
 pub struct Tox {
     raw: *mut ll::Tox,
     event_rx: Rc<RefCell<Receiver<Event>>>,
+    #[allow(dead_code)]
     event_tx: Box<Sender<Event>>,
 }
 
@@ -789,7 +791,7 @@ impl Tox {
         }
         let mut real_names = Vec::with_capacity(len as usize);
         for (name, &length) in names.iter().zip(lengths.iter()) {
-            match ::std::str::from_utf8(name.slice_to(length as usize)) {
+            match ::std::str::from_utf8(&name[..length as usize]) {
                 Ok(s) => real_names.push(Some(s.to_string())),
                 _ => real_names.push(None),
             }
