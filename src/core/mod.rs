@@ -75,7 +75,7 @@ impl fmt::Display for Address {
 }
 
 impl FromStr for Address {
-	type Err = ();
+    type Err = ();
     fn from_str(s: &str) -> Result<Address, ()> {
         if s.len() != 2 * ADDRESS_SIZE {
             return Err(());
@@ -140,7 +140,7 @@ impl fmt::Display for ClientId {
 }
 
 impl FromStr for ClientId {
-	type Err = ();
+    type Err = ();
     fn from_str(s: &str) -> Result<ClientId, ()> {
         if s.len() != 2 * ID_CLIENT_SIZE {
             return Err(());
@@ -362,11 +362,11 @@ macro_rules! some_or_minus {
     }
 }
 
-macro_rules! ok_or_null {
+macro_rules! ok_or_minus {
     ($e:expr, $val:expr) => {
         match $e {
-            0 => Err(()),
-            _ => Ok($val)
+            -1 => Err(()),
+            _ => Ok($val),
         }
     };
     ($e:expr) => {
@@ -540,21 +540,21 @@ impl Tox {
         let res = unsafe {
             ll::tox_send_message(self.raw, friendnumber, msg.as_bytes().as_ptr(), msg.len() as u32)
         };
-        ok_or_null!(res)
+        ok_or_minus!(res)
     }
 
     pub fn send_action(&mut self, friendnumber: i32, act: &str) -> Result<u32, ()> {
         let res = unsafe {
             ll::tox_send_action(self.raw, friendnumber, act.as_bytes().as_ptr(), act.len() as u32)
         };
-        ok_or_null!(res)
+        ok_or_minus!(res)
     }
 
     pub fn set_name(&mut self, name: &str) -> Result<(),()> {
-        let res = unsafe {
-            ll::tox_set_name(self.raw, name.as_bytes().as_ptr(), name.len() as u16)
-        };
-        ok_or_null!(res, ())
+        unsafe {
+            let bytes = name.as_bytes();
+            ok_or_minus!(ll::tox_set_name(self.raw, bytes.as_ptr(), bytes.len() as u16), ())
+        }
     }
 
     pub fn get_self_name(&self) -> Option<String> {
@@ -595,11 +595,11 @@ impl Tox {
             ll::tox_set_status_message(self.raw, status.as_bytes().as_ptr(),
              status.len() as u16)
         };
-        ok_or_null!(res, ())
+        ok_or_minus!(res, ())
     }
 
     pub fn set_user_status(&mut self, userstatus: UserStatus) -> Result<(), ()> {
-        ok_or_null!( unsafe { ll::tox_set_user_status(self.raw, userstatus as u8) }, () )
+        ok_or_minus!( unsafe { ll::tox_set_user_status(self.raw, userstatus as u8) }, () )
     }
 
     pub fn get_status_message(&self, friendnumber: i32) -> Option<String> {
@@ -671,7 +671,7 @@ impl Tox {
         let raw = unsafe {
             ll::tox_set_user_is_typing(self.raw, friendnumber, is_typing as u8)
         };
-        ok_or_null!(raw, ())
+        ok_or_minus!(raw, ())
     }
 
     pub fn get_is_typing(&self, friendnumber: i32) -> bool {
@@ -717,7 +717,7 @@ impl Tox {
     }
 
     pub fn del_groupchat(&mut self, groupnumber: i32) -> Result<(),()> {
-        ok_or_null!( unsafe { ll::tox_del_groupchat(self.raw, groupnumber) }, () )
+        unsafe { ok_or_minus!(ll::tox_del_groupchat(self.raw, groupnumber), ()) }
     }
 
     pub fn group_peername(&self, groupnumber: i32, peernumber: i32) -> Option<String> {
@@ -738,7 +738,7 @@ impl Tox {
     }
 
     pub fn invite_friend(&mut self, friendnumber: i32, groupnumber: i32) -> Result<(), ()> {
-        ok_or_null!( unsafe { ll::tox_invite_friend(self.raw, friendnumber, groupnumber) }, () )
+        unsafe { ok_or_minus!(ll::tox_invite_friend(self.raw, friendnumber, groupnumber), ()) }
     }
 
     pub fn join_groupchat(&mut self, friendnumber: i32,
@@ -757,7 +757,7 @@ impl Tox {
             ll::tox_group_message_send(self.raw, groupnumber, msg.as_bytes().as_ptr(),
                                    msg.len() as u16)
         };
-        ok_or_null!(res, ())
+        ok_or_minus!(res, ())
     }
 
     pub fn group_action_send(&mut self, groupnumber: i32, act: &str) -> Result<(), ()> {
@@ -765,7 +765,7 @@ impl Tox {
             ll::tox_group_action_send(self.raw, groupnumber, act.as_bytes().as_ptr(),
                                   act.len() as u16)
         };
-        ok_or_null!(res, ())
+        ok_or_minus!(res, ())
     }
 
     pub fn group_number_peers(&self, groupnumber: i32) -> Option<i32> {
@@ -819,7 +819,7 @@ impl Tox {
         let res = unsafe {
             ll::tox_set_avatar(self.raw, format as u8, data.as_ptr(), data.len() as u32)
         };
-        ok_or_null!(res, ())
+        ok_or_minus!(res, ())
     }
 
     pub fn unset_avatar(&mut self) {
@@ -852,21 +852,21 @@ impl Tox {
         let res = unsafe {
             ll::tox_request_avatar_info(self.raw, friendnumber)
         };
-        ok_or_null!(res, ())
+        ok_or_minus!(res, ())
     }
 
     pub fn request_avatar_data(&self, friendnumber: i32) -> Result<(), ()> {
         let res = unsafe {
             ll::tox_request_avatar_data(self.raw, friendnumber)
         };
-        ok_or_null!(res, ())
+        ok_or_minus!(res, ())
     }
 
     pub fn send_avatar_info(&mut self, friendnumber: i32) -> Result<(), ()> {
         let res = unsafe {
             ll::tox_send_avatar_info(self.raw, friendnumber)
         };
-        ok_or_null!(res, ())
+        ok_or_minus!(res, ())
     }
 
     // File sending
@@ -891,7 +891,7 @@ impl Tox {
                                   filenumber, message_id, data.as_ptr(),
                                   data.len() as u16)
         };
-        ok_or_null!(res, ())
+        ok_or_minus!(res, ())
     }
 
     pub fn file_send_data(&mut self, friendnumber: i32, filenumber: u8,
@@ -900,7 +900,7 @@ impl Tox {
             ll::tox_file_send_data(self.raw, friendnumber, filenumber, data.as_ptr(),
                                data.len() as u16)
         };
-        ok_or_null!(res, ())
+        ok_or_minus!(res, ())
     }
 
     pub fn file_data_size(&self, friendnumber: i32) -> Option<i32> {
@@ -920,20 +920,22 @@ impl Tox {
     }
 
     pub fn save(&mut self) -> Vec<u8> {
-    	unsafe {
-    		let mut buf: Vec<u8> = Vec::with_capacity(ll::tox_size(self.raw) as usize);
-    		ll::tox_save(self.raw, buf.as_mut_ptr());
-    		buf
-    	}
+        unsafe {
+            let size = ll::tox_size(self.raw) as usize;
+            let mut buf: Vec<u8> = Vec::with_capacity(size);
+            buf.set_len(size);
+            ll::tox_save(self.raw, buf.as_mut_ptr());
+            buf
+        }
     }
 
     pub fn load(&mut self, data: &[u8]) -> Result<(), ()> {
-    	unsafe {
-    		match ll::tox_load(self.raw, data.as_ptr(), data.len() as u32) {
-    			0 => Ok(()),
-    			_ => Err(()),
-    		}
-    	}
+        unsafe {
+            match ll::tox_load(self.raw, data.as_ptr(), data.len() as u32) {
+                0 => Ok(()),
+                _ => Err(()),
+            }
+        }
     }
 
     pub unsafe fn raw(&mut self) -> *mut ll::Tox {
