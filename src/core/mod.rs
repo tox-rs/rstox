@@ -919,6 +919,23 @@ impl Tox {
         }
     }
 
+    pub fn save(&mut self) -> Vec<u8> {
+    	unsafe {
+    		let mut buf: Vec<u8> = Vec::with_capacity(ll::tox_size(self.raw) as usize);
+    		ll::tox_save(self.raw, buf.as_mut_ptr());
+    		buf
+    	}
+    }
+
+    pub fn load(&mut self, data: &[u8]) -> Result<(), ()> {
+    	unsafe {
+    		match ll::tox_load(self.raw, data.as_ptr(), data.len() as u32) {
+    			0 => Ok(()),
+    			_ => Err(()),
+    		}
+    	}
+    }
+
     pub unsafe fn raw(&mut self) -> *mut ll::Tox {
         self.raw
     }
