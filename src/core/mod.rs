@@ -885,13 +885,18 @@ impl Tox {
     }
 
     pub fn file_send_control(&mut self, friendnumber: i32, send_receive: TransferType,
-            filenumber: u8, message_id: u8, data: &[u8]) -> Result<(), ()> {
-        let res = unsafe {
-            ll::tox_file_send_control(self.raw, friendnumber, 1 - send_receive as u8,
+            filenumber: u8, message_id: u8, pos: u64) -> Result<(), ()> {
+        unsafe {
+            let mut data: [u8; 8] = mem::transmute(pos);
+            let len = match message_id as u32 {
+                ll::TOX_FILECONTROL_RESUME_BROKEN => data.len(),
+                _ => 0,
+            };
+            let res = ll::tox_file_send_control(self.raw, friendnumber, 1 - send_receive as u8,
                                   filenumber, message_id, data.as_ptr(),
-                                  data.len() as u16)
-        };
-        ok_or_minus!(res, ())
+                                  len as u16);
+            ok_or_minus!(res, ())
+        }
     }
 
     pub fn file_send_data(&mut self, friendnumber: i32, filenumber: u8,
