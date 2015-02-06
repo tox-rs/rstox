@@ -5,4 +5,4 @@ extern crate libc;
 extern crate "core" as rust_core;
 
 pub mod core;
-//pub mod av;
+pub mod av;

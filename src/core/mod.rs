@@ -36,7 +36,7 @@ pub enum GroupchatType {
 
 /// A Tox address consist of `ClientId`, nospam and checksum
 #[repr(C)]
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Address {
     id: ClientId,
     nospam: [u8; 4],
@@ -124,7 +124,7 @@ fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
 
 /// `ClientId` is the main part of tox `Address`. Other two are nospam and checksum.
 #[repr(C)]
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 #[allow(missing_copy_implementations)]
 pub struct ClientId {
     pub raw: [u8; ID_CLIENT_SIZE],
@@ -154,7 +154,7 @@ impl FromStr for ClientId {
 }
 
 /// Locally-calculated cryptographic hash of the avatar data
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[allow(missing_copy_implementations)]
 pub struct Hash {
     pub hash: [u8; HASH_LENGTH]
@@ -173,14 +173,14 @@ impl Hash {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ConnectionStatus {
     Online,
     Offline,
 }
 
 #[repr(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum UserStatus {
     None = ll::TOX_USERSTATUS_NONE,
     Away = ll::TOX_USERSTATUS_AWAY,
@@ -188,7 +188,7 @@ pub enum UserStatus {
 }
 
 #[repr(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ChatChange {
     PeerAdd  = ll::TOX_CHAT_CHANGE_PEER_ADD,
     PeerDel  = ll::TOX_CHAT_CHANGE_PEER_DEL,
@@ -196,7 +196,7 @@ pub enum ChatChange {
 }
 
 #[repr(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ControlType {
     Accept       = ll::TOX_FILECONTROL_ACCEPT,
     Pause        = ll::TOX_FILECONTROL_PAUSE,
@@ -207,7 +207,7 @@ pub enum ControlType {
 
 /// Faerr - Friend Add Error
 #[repr(i32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Faerr {
     Toolong      = ll::TOX_FAERR_TOOLONG,
     Nomessage    = ll::TOX_FAERR_NOMESSAGE,
@@ -219,14 +219,14 @@ pub enum Faerr {
     Nomem        = ll::TOX_FAERR_NOMEM,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TransferType {
     Receiving,
     Sending,
 }
 
 /// Tox events enum
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Event {
     /// The first value is the client id, the second is the friend request message
     FriendRequest(Box<ClientId>, String),
@@ -742,7 +742,7 @@ impl Tox {
     }
 
     pub fn join_groupchat(&mut self, friendnumber: i32,
-                      data: Vec<u8>) -> Result<i32, ()> {
+                      data: &[u8]) -> Result<i32, ()> {
         let res = unsafe {
             ll::tox_join_groupchat(self.raw, friendnumber, data.as_ptr(), data.len() as u16)
         };
@@ -887,7 +887,7 @@ impl Tox {
     pub fn file_send_control(&mut self, friendnumber: i32, send_receive: TransferType,
             filenumber: u8, message_id: u8, pos: u64) -> Result<(), ()> {
         unsafe {
-            let mut data: [u8; 8] = mem::transmute(pos);
+            let data: [u8; 8] = mem::transmute(pos);
             let len = match message_id as u32 {
                 ll::TOX_FILECONTROL_RESUME_BROKEN => data.len(),
                 _ => 0,
@@ -943,6 +943,14 @@ impl Tox {
         }
     }
 
+    #[inline]
+    pub unsafe fn from_raw_tox(raw: *mut ll::Tox) -> Tox {
+        let mut tox: Tox = mem::zeroed();
+        tox.raw = raw;
+        tox
+    }
+
+    #[inline]
     pub unsafe fn raw(&mut self) -> *mut ll::Tox {
         self.raw
     }
@@ -952,7 +960,7 @@ impl Tox {
 macro_rules! parse_string {
     ($p:expr, $l:ident) => {
         unsafe {
-            let slice = slice::from_raw_buf($p, $l as usize);
+            let slice = slice::from_raw_parts($p, $l as usize);
             match ::std::str::from_utf8(slice) {
                 Ok(s) => s.to_string(),
                 _ => return,
@@ -966,7 +974,7 @@ macro_rules! parse_string {
 extern fn on_friend_request(_: *mut ll::Tox, public_key: *const u8, data: *const u8,
         length: u16, chan: *mut c_void) {
     let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };
-    let msg = parse_string!(&data, length);
+    let msg = parse_string!(data, length);
     let id = ClientId { raw: unsafe { ptr::read(public_key as *const _) } };
     tx.send(FriendRequest(box id, msg)).unwrap();
 }
@@ -974,28 +982,28 @@ extern fn on_friend_request(_: *mut ll::Tox, public_key: *const u8, data: *const
 extern fn on_friend_message(_: *mut ll::Tox, friendnumber: i32, msg: *const u8, length: u16,
         chan: *mut c_void) {
     let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };
-    let msg = parse_string!(&msg, length);
+    let msg = parse_string!(msg, length);
     tx.send(FriendMessage(friendnumber, msg)).unwrap();
 }
 
 extern fn on_friend_action(_: *mut ll::Tox, friendnumber: i32, act: *const u8, length: u16,
         chan: *mut c_void) {
     let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };
-    let act = parse_string!(&act, length);
+    let act = parse_string!(act, length);
     tx.send(FriendAction(friendnumber, act)).unwrap();
 }
 
 extern fn on_name_change(_: *mut ll::Tox, friendnumber: i32, new: *const u8, length: u16,
         chan: *mut c_void) {
     let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };
-    let new = parse_string!(&new, length);
+    let new = parse_string!(new, length);
     tx.send(NameChange(friendnumber, new)).unwrap();
 }
 
 extern fn on_status_message(_: *mut ll::Tox, friendnumber: i32, new: *const u8, length: u16,
         chan: *mut c_void) {
     let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };
-    let new = parse_string!(&new, length);
+    let new = parse_string!(new, length);
     tx.send(StatusMessage(friendnumber, new)).unwrap();
 }
 
@@ -1047,14 +1055,14 @@ extern fn on_group_invite(_: *mut ll::Tox, friendnumber: i32, ty: u8, data: *con
 extern fn on_group_message(_: *mut ll::Tox, groupnumber: i32, frindgroupnumber: i32,
         message: *const u8, len: u16, chan: *mut c_void) {
     let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };
-    let msg = parse_string!(&message, len);
+    let msg = parse_string!(message, len);
     tx.send(GroupMessage(groupnumber, frindgroupnumber, msg)).unwrap();
 }
 
 extern fn on_group_action(_: *mut ll::Tox, groupnumber: i32, frindgroupnumber: i32,
         action: *const u8, len: u16, chan: *mut c_void) {
     let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };    
-    let action = parse_string!(&action, len);
+    let action = parse_string!(action, len);
     tx.send(GroupMessage(groupnumber, frindgroupnumber, action)).unwrap();
 }
 
@@ -1073,7 +1081,7 @@ extern fn on_group_namelist_change(_: *mut ll::Tox, groupnumber: i32, peernumber
 extern fn on_file_send_request(_: *mut ll::Tox, friendnumber: i32, filenumber: u8,
         filesize: u64, filename: *const u8, len: u16, chan: *mut c_void) {
     let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };    
-    let slice = unsafe { slice::from_raw_buf(&filename, len as usize) };
+    let slice = unsafe { slice::from_raw_parts(filename, len as usize) };
     let path = match Path::new_opt(slice) {
         Some(p) => match p.filename() {
             Some(f) => f.to_vec(),
@@ -1100,14 +1108,14 @@ extern fn on_file_control(_: *mut ll::Tox, friendnumber: i32, receive_send: u8,
         0 => TransferType::Receiving,
         _ => return,
     };
-    let data = unsafe { slice::from_raw_buf(&data, len as usize).to_vec() };
+    let data = unsafe { slice::from_raw_parts(data, len as usize).to_vec() };
     tx.send(FileControl(friendnumber, tt, filenumber, ty, data)).unwrap();
 }
 
 extern fn on_file_data(_: *mut ll::Tox, friendnumber: i32, filenumber: u8, data: *const u8,
         len: u16, chan: *mut c_void) {
     let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };    
-    let data = unsafe { slice::from_raw_buf(&data, len as usize).to_vec() };
+    let data = unsafe { slice::from_raw_parts(data, len as usize).to_vec() };
     tx.send(FileData(friendnumber, filenumber, data)).unwrap();
 }
 

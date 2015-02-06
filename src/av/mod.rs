@@ -1,20 +1,26 @@
+use libc::{c_int, c_uint, c_char, c_void};
+
 use std::sync::Arc;
 use std::cell::{RefCell, UnsafeCell};
 use std::error::Error;
-use std::fmt;
+use std::{fmt, raw, slice, mem};
+use std::old_io::timer as timer;
+use std::time::Duration;
 use core::{Tox};
+
+pub use self::AvEvent::*;
 
 mod ll;
 
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Debug)]
 pub enum CallType {
     Audio = 192,
     Video
 }
 
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Debug)]
 pub enum CallState {
     Inviting,
     Starting,
@@ -74,7 +80,7 @@ impl fmt::Display for AvError {
 }
 
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Debug)]
 pub enum Capability {
     AudioEncoding = 1 << 0,
     AudioDecoding = 1 << 1,
@@ -96,8 +102,8 @@ pub struct CallSettings {
 }
 
 /// ToxAv events from a given friend (call id included).
-#[derive(Clone, Copy)]
-pub enum Event {
+#[derive(Clone, Copy, Debug)]
+pub enum AvEvent {
     Invite(i32),
     Ringing(i32),
     Start(i32),
@@ -118,34 +124,74 @@ pub struct AudioBit<'a> {
     pub sample_rate: u32,
 }
 
-pub type FnEvent = FnMut(&ToxAv, Event) + 'static;
+pub type FnEvent = FnMut(&ToxAv, AvEvent) + 'static;
 pub type FnAudio = FnMut(&ToxAv, &[i16]) + 'static;
-pub type FnGroupAudio = FnMut(&mut ToxAv, AudioBit) + 'static;
+pub type FnGroupAudio = FnMut(&mut Tox, AudioBit) + 'static;
 
 pub struct GroupAudio {
-    closure: *mut FnGroupAudio,
+    closure: *mut Box<FnGroupAudio>,
     poison: Arc<UnsafeCell<bool>>, // mb use AtomicBool instead?
 }
 
 impl GroupAudio {
     pub fn new_groupchat(&self, tox: &mut Tox) -> Option<i32> {
-        unimplemented!()
+        unsafe {
+            let closure: *mut c_void = mem::transmute(self.closure);
+            match ll::toxav_add_av_groupchat(tox.raw(), Some(group_audio_callback), closure) {
+                -1 => None,
+                n => Some(n),
+            }
+        }
     }
-    pub fn join_groupchat(&self, tox: &mut Tox) -> Option<i32> {
-        unimplemented!()
+    pub fn join_groupchat(&self, tox: &mut Tox, fr_num: i32, data: &[u8]) -> Option<i32> {
+        unsafe {
+            let closure: *mut c_void = mem::transmute(self.closure);
+            let res = ll::toxav_join_av_groupchat(
+                tox.raw(), fr_num, data.as_ptr(), data.len() as u16,
+                Some(group_audio_callback), closure
+            );
+            match res {
+                -1 => None,
+                n => Some(n),
+            }
+        }
     }
-    pub fn send_audio(&self, tox: &mut Tox, bit: AudioBit) -> Result<(),()> {
-        unimplemented!()
+    pub fn send_audio(&self, tox: &mut Tox, gr_num: i32, bit: AudioBit) -> Result<(),()> {
+        unsafe {
+            let res = ll::toxav_group_send_audio(
+                tox.raw(), gr_num, bit.pcm.as_ptr(), bit.samples, bit.channels, bit.sample_rate
+            );
+            match res {
+                -1 => Err(()),
+                _ => Ok(()),
+            }
+        }
     }
 }
 
+extern fn group_audio_callback(tox_ll: *mut ll::Tox, gr_num: c_int, peer_num: c_int, pcm: *const i16,
+                               samples: c_uint, channels: u8, rate: c_uint, data: *mut c_void) {
+    unsafe {
+        let mut closure: &mut FnGroupAudio =
+            mem::transmute_copy(mem::transmute::<_, &mut raw::Closure>(data));
+        let bit = AudioBit {
+            pcm: slice::from_raw_parts(pcm, (samples * channels as u32) as usize),
+            samples: samples as u32,
+            channels: channels,
+            sample_rate: rate,
+        };
+        let mut tox: Tox = Tox::from_raw_tox(tox_ll);
+        (*closure)(&mut tox, bit);
+        mem::forget(tox);
+    }
+}
 
 pub struct ToxAv {
     av: *mut ll::ToxAv,
     tox: Arc<RefCell<Tox>>,
-    on_event: Option<Box<FnEvent>>,
-    on_audio: Option<Box<FnAudio>>,
-    on_group_audio: Option<Box<FnGroupAudio>>,
+    on_event: Option<Box<Box<FnEvent>>>,
+    on_audio: Option<Box<Box<FnAudio>>>,
+    on_group_audio: Option<Box<Box<FnGroupAudio>>>,
     poison: Arc<UnsafeCell<bool>>,
 }
 
@@ -158,6 +204,8 @@ macro_rules! av_result {
     };
     ($exp:expr) => { av_result!($exp, ()) };
 }
+
+unsafe impl Send for ToxAv {}
 
 impl ToxAv {
     pub fn new(mut tox: Tox, max_calls: i32) -> (Arc<RefCell<Tox>>, ToxAv) {
@@ -172,22 +220,55 @@ impl ToxAv {
 
         (av.tox.clone(), av)
     }
+
     pub fn on_event(&mut self, on_event: Box<FnEvent>) {
-        unimplemented!()
+        use self::ll::ToxAvCallbackID::*;
+        use self::ll::toxav_register_callstate_callback as reg_cb;
+        unsafe {
+            let closure = box on_event;
+            let data: *mut c_void = mem::transmute(&*closure);
+
+            reg_cb(self.av, Some(on_invite), OnInvite, data);
+            reg_cb(self.av, Some(on_ringing), OnRinging, data);
+            reg_cb(self.av, Some(on_start), OnStart, data);
+            reg_cb(self.av, Some(on_cancel), OnCancel, data);
+            reg_cb(self.av, Some(on_reject), OnReject, data);
+            reg_cb(self.av, Some(on_end), OnEnd, data);
+            reg_cb(self.av, Some(on_request_timeout), OnRequestTimeout, data);
+            reg_cb(self.av, Some(on_peer_timeout), OnPeerTimeout, data);
+            reg_cb(self.av, Some(on_peer_cs_change), OnPeerCSChange, data);
+            reg_cb(self.av, Some(on_self_cs_change), OnSelfCSChange, data);
+
+            self.on_event = Some(closure);
+        }
     }
+
     pub fn on_audio(&mut self, on_audio: Box<FnAudio>) {
         unimplemented!()
     }
-    pub fn group_audio(&mut self, mut oga: Box<FnGroupAudio>) -> GroupAudio {
+
+    pub fn group_audio(&mut self, oga: Box<FnGroupAudio>) -> GroupAudio {
         assert!(self.on_group_audio.is_none());
-/*        let res = GroupAudio {
-            closure: &mut *oga as *mut FnGroupAudio,
+        let closure = box oga;
+        let res = GroupAudio {
+            closure: unsafe { mem::transmute(&*closure) },
             poison: self.poison.clone(),
         };
-        self.on_group_audio = Some(oga);
-        res*/
-        unimplemented!()
+        self.on_group_audio = Some(closure);
+        res
     }
+
+    pub fn tick(&mut self) {
+        unsafe {
+            ll::toxav_do(self.av);
+        }
+    }
+
+    pub fn wait(&mut self) {
+        let time = unsafe { ll::toxav_do_interval(self.av) };
+        timer::sleep(Duration::milliseconds(time as i64));
+    }
+
     pub fn call(&self, friend_id: i32, settings: &CallSettings, rsec: i32) -> Result<i32, AvError> {
         let mut cid = 0i32;
         unsafe {
@@ -197,21 +278,27 @@ impl ToxAv {
             )
         }
     }
+
     pub fn hangup(&self, call_id: i32) -> Result<(), AvError> {
         unsafe { av_result!(ll::toxav_hangup(self.av, call_id)) }
     }
+
     pub fn answer(&self, call_id: i32, settings: &CallSettings) -> Result<(), AvError> {
         unsafe { av_result!(ll::toxav_answer(self.av, call_id, settings as *const _)) }
     }
+
     pub fn reject(&self, call_id: i32) -> Result<(), AvError> {
         unsafe { av_result!(ll::toxav_reject(self.av, call_id, &0 as *const _)) }
     }
+
     pub fn cancel(&self, call_id: i32, peer: i32) -> Result<(), AvError> {
         unsafe { av_result!(ll::toxav_cancel(self.av, call_id, peer, &0 as *const _)) }
     }
+
     pub fn change_settings(&self, call_id: i32, settings: &CallSettings) -> Result<(), AvError> {
         unsafe { av_result!(ll::toxav_change_settings(self.av, call_id, settings as *const _)) }
     }
+
     // Transmittion stuff will be here
     // BEGIN
     // END
@@ -220,9 +307,11 @@ impl ToxAv {
     pub fn get_call_state(&self, call_id: i32) -> CallState {
         unsafe { ll::toxav_get_call_state(self.av, call_id) }
     }
+
     pub fn capability_supported(&self, call_id: i32, cap: Capability) -> Result<(), AvError> {
         unsafe { av_result!(ll::toxav_capability_supported(self.av, call_id, cap)) }
     }
+
     pub fn get_active_count(&self) -> Option<i32> {
         unsafe {
             match ll::toxav_get_active_count(self.av) {
@@ -231,4 +320,37 @@ impl ToxAv {
             }
         }
     }
+
+    #[inline]
+    unsafe fn from_raw_av(raw: *mut ll::ToxAv) -> ToxAv {
+        let mut av: ToxAv = mem::zeroed();
+        av.av = raw;
+        av
+    }
 }
+
+macro_rules! event_callback {
+    ($name: ident, $event: ident) => {
+        extern fn $name(agent: *mut c_void, call_id: i32, arg: *mut c_void) {
+            unsafe {
+                let ev = AvEvent::$event(call_id);
+                let closure: &mut FnEvent =
+                    mem::transmute_copy(mem::transmute::<_, &mut raw::Closure>(arg));
+                let av = ToxAv::from_raw_av(agent as *mut ll::ToxAv);
+                (*closure)(&av, ev);
+                mem::forget(av);
+            }
+        }
+    }
+}
+
+event_callback!(on_invite, Invite);
+event_callback!(on_ringing, Ringing);
+event_callback!(on_start, Start);
+event_callback!(on_cancel, Cancel);
+event_callback!(on_reject, Reject);
+event_callback!(on_end, End);
+event_callback!(on_request_timeout, RequestTimeout);
+event_callback!(on_peer_timeout, PeerTimeout);
+event_callback!(on_peer_cs_change, PeerCsChange);
+event_callback!(on_self_cs_change, SelfCsChange);
