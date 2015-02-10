@@ -85,10 +85,10 @@ extern {
                                      dest_max: ::libc::c_int,
                                      input: *mut vpx_image_t) 
      -> ::libc::c_int;
-*/
     pub fn toxav_send_video(av: *mut ToxAv, call_index: i32,
                             frame: *const u8, frame_size: u32)
      -> ::libc::c_int;
+*/
     pub fn toxav_prepare_audio_frame(av: *mut ToxAv, call_index: i32,
                                      dest: *mut u8,
                                      dest_max: ::libc::c_int,
@@ -109,7 +109,7 @@ extern {
     pub fn toxav_capability_supported(av: *mut ToxAv, call_index: i32,
                                       capability: Capability)
      -> ::libc::c_int;
-    pub fn toxav_get_tox(av: *mut ToxAv) -> *mut Tox;
+    /*pub fn toxav_get_tox(av: *mut ToxAv) -> *mut Tox;*/
     pub fn toxav_get_active_count(av: *mut ToxAv) -> ::libc::c_int;
     pub fn toxav_add_av_groupchat(tox: *mut Tox,
                                   audio_callback:

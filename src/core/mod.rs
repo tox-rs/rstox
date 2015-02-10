@@ -6,6 +6,7 @@ use std::old_io::timer::{sleep};
 use std::time::duration::Duration;
 use rust_core::str::FromStr;
 use libc::{c_uint, c_void};
+
 pub use self::ll::Tox as Tox_Struct;
 pub use self::Event::*;
 
@@ -350,13 +351,13 @@ impl Iterator for ToxIter {
 macro_rules! some_or_minus {
     ($e:expr, $val:expr) => {
         match $e {
-            -1 => None,
+            -1 => return None,
             _ => Some($val),
         }
     };
     ($e:expr) => {
         match $e {
-            -1 => None,
+            -1 => return None,
             v => Some(v),
         }
     }
@@ -365,13 +366,13 @@ macro_rules! some_or_minus {
 macro_rules! ok_or_minus {
     ($e:expr, $val:expr) => {
         match $e {
-            -1 => Err(()),
+            -1 => return Err(()),
             _ => Ok($val),
         }
     };
     ($e:expr) => {
         match $e {
-            -1 => Err(()),
+            -1 => return Err(()),
             v => Ok(v),
         }
     }
@@ -495,9 +496,8 @@ impl Tox {
     }
 
     pub fn add_friend_norequest(&mut self, client_id: ClientId) -> Result<i32, ()> {
-        match unsafe { ll::tox_add_friend_norequest(self.raw, client_id.raw.as_ptr()) } {
-            -1 => Err(()),
-            n => Ok(n),
+        unsafe {
+            ok_or_minus!(ll::tox_add_friend_norequest(self.raw, client_id.raw.as_ptr()))
         }
     }
 
@@ -566,10 +566,7 @@ impl Tox {
         };
         match res {
             0 => None,
-            _ => match String::from_utf8(name) {
-                Ok(name) => Some(name),
-                _ => None,
-            },
+            _ => String::from_utf8(name).ok(),
         }
     }
 
@@ -581,13 +578,8 @@ impl Tox {
             name.set_len(len as usize);
             len
         };
-        match res {
-            -1 => None,
-            _ => match String::from_utf8(name) {
-                Ok(name) => Some(name),
-                _ => None,
-            },
-        }
+        some_or_minus!(res);
+        String::from_utf8(name).ok()
     }
 
     pub fn set_status_message(&mut self, status: &str) -> Result<(),()> {
@@ -606,7 +598,7 @@ impl Tox {
         let size = unsafe { ll::tox_get_status_message_size(&*self.raw, friendnumber) };
         let size = match size {
             -1 => return None,
-            _ => size,
+            s => s,
         };
         let mut status = Vec::with_capacity(size as usize);
         let size = unsafe {
@@ -615,20 +607,15 @@ impl Tox {
             status.set_len(len as usize);
             len
         };
-        match size {
-            -1 => return None,
-            _ => match String::from_utf8(status) {
-                Ok(status) => Some(status),
-                _ => return None,
-            },
-        }
+        some_or_minus!(size);
+        String::from_utf8(status).ok()
     }
 
     pub fn get_self_status_message(&self) -> Option<String> {
         let size = unsafe { ll::tox_get_self_status_message_size(&*self.raw) };
         let size = match size {
             -1 => return None,
-            _ => size as u32,
+            s => s as u32,
         };
         let mut status = Vec::with_capacity(size as usize);
         let size = unsafe {
@@ -636,13 +623,8 @@ impl Tox {
             status.set_len(len as usize);
             len
         };
-        match size {
-            -1 => return None,
-            _ => match String::from_utf8(status) {
-                Ok(status) => Some(status),
-                _ => return None,
-            },
-        }
+        some_or_minus!(size);
+        String::from_utf8(status).ok()
     }
 
     pub fn get_user_status(&self, friendnumber: i32) -> Option<UserStatus> {
@@ -710,9 +692,8 @@ impl Tox {
     // Groupchats
 
     pub fn add_groupchat(&mut self) -> Result<i32, ()> {
-        match unsafe { ll::tox_add_groupchat(self.raw) } {
-            -1 => Err(()),
-            n => Ok(n),
+        unsafe {
+            ok_or_minus!(ll::tox_add_groupchat(self.raw))
         }
     }
 
@@ -728,13 +709,8 @@ impl Tox {
             vec.set_len(len as usize);
             len
         };
-        match len {
-            -1 => None,
-            _ => match String::from_utf8(vec) {
-                Ok(name) => Some(name),
-                _ => None,
-            }
-        }
+        some_or_minus!(len);
+        String::from_utf8(vec).ok()
     }
 
     pub fn invite_friend(&mut self, friendnumber: i32, groupnumber: i32) -> Result<(), ()> {
@@ -746,10 +722,7 @@ impl Tox {
         let res = unsafe {
             ll::tox_join_groupchat(self.raw, friendnumber, data.as_ptr(), data.len() as u16)
         };
-        match res {
-            -1 => Err(()),
-            n => Ok(n),
-        }
+        ok_or_minus!(res)
     }
 
     pub fn group_message_send(&mut self, groupnumber: i32, msg: &str) -> Result<(), ()> {
@@ -811,6 +784,13 @@ impl Tox {
             vec.set_len(num as usize);
         }
         vec
+    }
+
+    pub fn group_get_type(&self, groupnumber: i32) -> Option<GroupchatType> {
+        unsafe {
+            some_or_minus!(ll::tox_group_get_type(self.raw, groupnumber))
+                .map(|k| mem::transmute(k as u8))
+        }
     }
 
     // Avatars
@@ -878,10 +858,7 @@ impl Tox {
             ll::tox_new_file_sender(self.raw, friendnumber, filesize,
                                 filename.as_ptr(), filename.len() as u16)
         };
-        match res {
-            -1 => Err(()),
-            n => Ok(n)
-        }
+        ok_or_minus!(res)
     }
 
     pub fn file_send_control(&mut self, friendnumber: i32, send_receive: TransferType,
@@ -944,6 +921,7 @@ impl Tox {
     }
 
     #[inline]
+    #[doc(hidden)]
     pub unsafe fn from_raw_tox(raw: *mut ll::Tox) -> Tox {
         let mut tox: Tox = mem::zeroed();
         tox.raw = raw;
@@ -951,6 +929,7 @@ impl Tox {
     }
 
     #[inline]
+    #[doc(hidden)]
     pub unsafe fn raw(&mut self) -> *mut ll::Tox {
         self.raw
     }

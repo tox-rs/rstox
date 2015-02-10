@@ -18,6 +18,7 @@ pub const TOX_USERSTATUS_BUSY:    c_uint = 2;
 pub const TOX_USERSTATUS_INVALID: c_uint = 3;
 
 #[repr(C)]
+#[doc(hidden)]
 #[allow(missing_copy_implementations)]
 pub struct Tox;
 

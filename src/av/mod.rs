@@ -1,4 +1,4 @@
-use libc::{c_int, c_uint, c_char, c_void};
+use libc::{c_int, c_uint, c_void};
 
 use std::sync::Arc;
 use std::cell::{RefCell, UnsafeCell};
@@ -116,7 +116,7 @@ pub enum AvEvent {
     SelfCsChange(i32),
 }
 
-// Audio, received in group audio callback
+/// Audio, received in group audio callback
 pub struct AudioBit<'a> {
     pub pcm: &'a [i16],
     pub samples: u32,
@@ -125,8 +125,9 @@ pub struct AudioBit<'a> {
 }
 
 pub type FnEvent = FnMut(&ToxAv, AvEvent) + 'static;
-pub type FnAudio = FnMut(&ToxAv, &[i16]) + 'static;
-pub type FnGroupAudio = FnMut(&mut Tox, AudioBit) + 'static;
+pub type FnAudio = FnMut(&ToxAv, i32, &[i16]) + 'static;
+pub type FnGroupAudio = FnMut(&mut Tox, i32, i32, AudioBit) + 'static;
+
 
 pub struct GroupAudio {
     closure: *mut Box<FnGroupAudio>,
@@ -136,6 +137,7 @@ pub struct GroupAudio {
 impl GroupAudio {
     pub fn new_groupchat(&self, tox: &mut Tox) -> Option<i32> {
         unsafe {
+            assert!(*self.poison.get() == false, "tried to use a poisoned GroupAudio");
             let closure: *mut c_void = mem::transmute(self.closure);
             match ll::toxav_add_av_groupchat(tox.raw(), Some(group_audio_callback), closure) {
                 -1 => None,
@@ -145,6 +147,7 @@ impl GroupAudio {
     }
     pub fn join_groupchat(&self, tox: &mut Tox, fr_num: i32, data: &[u8]) -> Option<i32> {
         unsafe {
+            assert!(*self.poison.get() == false, "tried to use a poisoned GroupAudio");
             let closure: *mut c_void = mem::transmute(self.closure);
             let res = ll::toxav_join_av_groupchat(
                 tox.raw(), fr_num, data.as_ptr(), data.len() as u16,
@@ -158,6 +161,7 @@ impl GroupAudio {
     }
     pub fn send_audio(&self, tox: &mut Tox, gr_num: i32, bit: AudioBit) -> Result<(),()> {
         unsafe {
+            assert!(*self.poison.get() == false, "tried to use a poisoned GroupAudio");
             let res = ll::toxav_group_send_audio(
                 tox.raw(), gr_num, bit.pcm.as_ptr(), bit.samples, bit.channels, bit.sample_rate
             );
@@ -181,18 +185,15 @@ extern fn group_audio_callback(tox_ll: *mut ll::Tox, gr_num: c_int, peer_num: c_
             sample_rate: rate,
         };
         let mut tox: Tox = Tox::from_raw_tox(tox_ll);
-        (*closure)(&mut tox, bit);
+        (*closure)(&mut tox, gr_num as i32, peer_num as i32, bit);
         mem::forget(tox);
     }
 }
 
-pub struct ToxAv {
-    av: *mut ll::ToxAv,
-    tox: Arc<RefCell<Tox>>,
-    on_event: Option<Box<Box<FnEvent>>>,
-    on_audio: Option<Box<Box<FnAudio>>>,
-    on_group_audio: Option<Box<Box<FnGroupAudio>>>,
-    poison: Arc<UnsafeCell<bool>>,
+
+pub struct Transmittion<'a> {
+    av: &'a ToxAv,
+    call_id: i32,
 }
 
 macro_rules! av_result {
@@ -205,7 +206,77 @@ macro_rules! av_result {
     ($exp:expr) => { av_result!($exp, ()) };
 }
 
+#[unsafe_destructor]
+impl<'a> Drop for Transmittion<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            ll::toxav_stop_call(self.av.av, self.call_id);
+        }
+    }
+}
+
+impl<'a> Transmittion<'a> {
+    pub fn encode_audio_frame(&self, dest: &mut [u8], frame: &[i16]) -> Result<usize, AvError> {
+        unsafe {
+            let res = ll::toxav_prepare_audio_frame(
+                self.av.av, self.call_id,
+                dest.as_mut_ptr(), dest.len() as i32,
+                frame.as_ptr(), frame.len() as i32
+            );
+            match res {
+                err if err < 0 => Err(mem::transmute(err)),
+                size => Ok(size as usize),
+            }
+        }
+    }
+    pub fn send_audio(&self, frame: &[u8]) -> Result<(), AvError> {
+        unsafe {
+            let res = ll::toxav_send_audio(
+                self.av.av, self.call_id,
+                frame.as_ptr(), frame.len() as c_uint
+            );
+            av_result!(res)
+        }
+    }
+    pub fn kill(self) {
+        unsafe {
+            ll::toxav_kill_transmission(self.av.av, self.call_id);
+        }
+    }
+}
+
+
+pub struct ToxAv {
+    av: *mut ll::ToxAv,
+    tox: Arc<RefCell<Tox>>,
+    on_event: Option<Box<Box<FnEvent>>>,
+    on_audio: Option<Box<Box<FnAudio>>>,
+    on_group_audio: Option<Box<Box<FnGroupAudio>>>,
+    poison: Arc<UnsafeCell<bool>>,
+}
+
 unsafe impl Send for ToxAv {}
+unsafe impl Sync for ToxAv {}
+
+impl Drop for ToxAv {
+    fn drop(&mut self) {
+        use super::core::GroupchatType;
+        unsafe {
+            // Try to remove all av groups before drop to avoid crash
+            // Let's pray it will somehow help
+            *self.poison.get() = true;
+            let tox = self.tox.as_unsafe_cell().get().as_mut().unwrap();
+            let lst = tox.get_chatlist().into_iter();
+            for n in lst {
+                if tox.group_get_type(n) == Some(GroupchatType::Av) {
+                    drop(tox.del_groupchat(n));
+                }
+            }
+
+            ll::toxav_kill(self.av);
+        }
+    }
+}
 
 impl ToxAv {
     pub fn new(mut tox: Tox, max_calls: i32) -> (Arc<RefCell<Tox>>, ToxAv) {
@@ -244,11 +315,18 @@ impl ToxAv {
     }
 
     pub fn on_audio(&mut self, on_audio: Box<FnAudio>) {
-        unimplemented!()
+        use self::ll::toxav_register_audio_callback as reg_cb;
+        unsafe {
+            let closure = box on_audio;
+            let data: *mut c_void = mem::transmute(&*closure);
+            
+            reg_cb(self.av, Some(on_audio_callback), data);
+            self.on_audio = Some(closure);
+        }
     }
 
     pub fn group_audio(&mut self, oga: Box<FnGroupAudio>) -> GroupAudio {
-        assert!(self.on_group_audio.is_none());
+        assert!(self.on_group_audio.is_none(), "`group_audio` can be called only once");
         let closure = box oga;
         let res = GroupAudio {
             closure: unsafe { mem::transmute(&*closure) },
@@ -291,19 +369,40 @@ impl ToxAv {
         unsafe { av_result!(ll::toxav_reject(self.av, call_id, &0 as *const _)) }
     }
 
-    pub fn cancel(&self, call_id: i32, peer: i32) -> Result<(), AvError> {
-        unsafe { av_result!(ll::toxav_cancel(self.av, call_id, peer, &0 as *const _)) }
+    pub fn cancel(&self, call_id: i32) -> Result<(), AvError> {
+        unsafe { av_result!(ll::toxav_cancel(self.av, call_id, 0, &0 as *const _)) }
     }
 
     pub fn change_settings(&self, call_id: i32, settings: &CallSettings) -> Result<(), AvError> {
         unsafe { av_result!(ll::toxav_change_settings(self.av, call_id, settings as *const _)) }
     }
 
-    // Transmittion stuff will be here
-    // BEGIN
-    // END
-    //pub fn get_peer_id() -> i32
-    //pub fn get_peer_settings(&self, call_id: i32, peer: i32,)
+    pub fn transmission(&self, call_id: i32) -> Result<Transmittion, AvError> {
+        unsafe {
+            let res = ll::toxav_prepare_transmission(self.av, call_id, 0);
+            av_result!(res).map(|_| Transmittion {av: &self, call_id: call_id})
+        }
+    }
+
+    pub fn get_peer_id(&self, call_id: i32) -> Option<i32> {
+        unsafe {
+            let res = ll::toxav_get_peer_id(self.av, call_id, 0);
+            match res {
+                -1 => None,
+                n => Some(n),
+            }
+        }
+    }
+
+    pub fn get_peer_settings(&self, call_id: i32,) -> Option<CallSettings> {
+        unsafe {
+            let mut settings: CallSettings = mem::uninitialized();
+            let res =
+                ll::toxav_get_peer_csettings(self.av, call_id, 0, &mut settings as *mut _);
+            av_result!(res).map(|_| settings).ok()
+        }
+    }
+
     pub fn get_call_state(&self, call_id: i32) -> CallState {
         unsafe { ll::toxav_get_call_state(self.av, call_id) }
     }
@@ -316,7 +415,7 @@ impl ToxAv {
         unsafe {
             match ll::toxav_get_active_count(self.av) {
                 -1 => None,
-                c => Some(c),
+                n => Some(n as i32),
             }
         }
     }
@@ -326,6 +425,17 @@ impl ToxAv {
         let mut av: ToxAv = mem::zeroed();
         av.av = raw;
         av
+    }
+}
+
+extern fn on_audio_callback(agent: *mut c_void, call_id: i32, pcm: *const i16, size: u16, data: *mut c_void) {
+    unsafe {
+        let closure: &mut FnAudio =
+            mem::transmute_copy(mem::transmute::<_, &mut raw::Closure>(data));
+        let pcm = slice::from_raw_parts(pcm, size as usize);
+        let av = ToxAv::from_raw_av(agent as *mut ll::ToxAv);
+        (*closure)(&av, call_id, pcm);
+        mem::forget(av);
     }
 }
 

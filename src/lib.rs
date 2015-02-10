@@ -1,6 +1,7 @@
 //#![allow(dead_code)]
 //#![allow(unused_variables)]
-#![feature(libc, core, collections, std_misc, box_syntax)]
+#![feature(box_syntax, unsafe_destructor)]
+#![feature(libc, core, collections, std_misc, io)]
 extern crate libc;
 extern crate "core" as rust_core;
 
