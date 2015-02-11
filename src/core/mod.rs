@@ -5,6 +5,9 @@ use std::rc::Rc;
 use std::old_io::timer::{sleep};
 use std::time::duration::Duration;
 use rust_core::str::FromStr;
+use std::path::Path;
+use std::ffi::{OsString, OsStr, AsOsStr};
+use std::os::unix::OsStrExt;
 use libc::{c_uint, c_void};
 
 pub use self::ll::Tox as Tox_Struct;
@@ -259,7 +262,7 @@ pub enum Event {
     /// `(gnum, pnum, ChatChange)`
     GroupNamelistChange(i32, i32, ChatChange),
     /// `(fnum, fid, fisize, finame)`
-    FileSendRequest(i32, u8, u64, Vec<u8>),
+    FileSendRequest(i32, u8, u64, OsString),
     /// `(fnum, TranserType, fid, ControlType, data)`
     FileControl(i32, TransferType, u8, ControlType, Vec<u8>),
     /// `(fnum, fid, data)`
@@ -853,7 +856,7 @@ impl Tox {
 
     pub fn new_file_sender(&mut self, friendnumber: i32, filesize: u64, filename: &Path)
             -> Result<i32, ()> {
-        let filename = filename.as_vec();
+        let filename = filename.as_os_str().as_byte_slice();
         let res = unsafe {
             ll::tox_new_file_sender(self.raw, friendnumber, filesize,
                                 filename.as_ptr(), filename.len() as u16)
@@ -1059,16 +1062,16 @@ extern fn on_group_namelist_change(_: *mut ll::Tox, groupnumber: i32, peernumber
 
 extern fn on_file_send_request(_: *mut ll::Tox, friendnumber: i32, filenumber: u8,
         filesize: u64, filename: *const u8, len: u16, chan: *mut c_void) {
-    let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };    
-    let slice = unsafe { slice::from_raw_parts(filename, len as usize) };
-    let path = match Path::new_opt(slice) {
-        Some(p) => match p.filename() {
-            Some(f) => f.to_vec(),
-            None => b"\xbf\xef".to_vec(),
-        },
-        None => b"\xbf\xef".to_vec(),
-    };
-    tx.send(FileSendRequest(friendnumber, filenumber, filesize, path)).unwrap();
+    unsafe {
+        let tx = mem::transmute::<_, &mut Sender<Event>>(chan);
+        // FIXME: replace transmute hack by something sane
+        let os_str: &OsStr = mem::transmute(slice::from_raw_parts(filename, len as usize));
+        let path = match Path::new(os_str).file_name() {
+            Some(f) => f.to_os_string(),
+            None => return,
+        };
+        tx.send(FileSendRequest(friendnumber, filenumber, filesize, path)).unwrap();
+    }
 }
 
 extern fn on_file_control(_: *mut ll::Tox, friendnumber: i32, receive_send: u8,
