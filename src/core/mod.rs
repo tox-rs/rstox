@@ -271,6 +271,10 @@ pub enum Event {
     AvatarInfo(i32, AvatarFormat, Hash),
     /// `(fnum, AvatarFormat, Hash, data)`
     AvatarData(i32, AvatarFormat, Hash, Vec<u8>),
+    #[cfg(feature = "packets")]
+    LossyPacket(u8, i32, Vec<u8>),
+    #[cfg(feature = "packets")]
+    LosslessPacket(u8, i32, Vec<u8>),
 }
 
 #[repr(u8)]
@@ -403,8 +407,9 @@ impl Tox {
         let (tx, rx) = channel::<Event>();
         let mut btx = box tx;
         let rrrx = Rc::new(RefCell::new(rx)); // too much bloat to just get a channel, eh?
-        let chan = &mut *btx as *mut _ as *mut c_void;
         unsafe {
+            let chan: *mut c_void = mem::transmute(&mut *btx);
+
             ll::tox_callback_friend_request(        tox, on_friend_request,        chan);
             ll::tox_callback_friend_message(        tox, on_friend_message,        chan);
             ll::tox_callback_friend_action(         tox, on_friend_action,         chan);
@@ -682,6 +687,52 @@ impl Tox {
             vec.set_len(len as usize);
         }
         vec
+    }
+
+    /// Accept lossy packets from the given friend with the given id. Id must be in [200, 254].
+    /// Panics if the id is out of the range.
+    #[cfg(feature = "packets")]
+    pub fn accept_lossy_packets(&mut self, fnum: i32, id: u8) -> Result<(),()> {
+        assert!(id >= 200 && id <= 254, "id is out of range [200, 254]");
+        unsafe {
+            let chan: *mut c_void = mem::transmute(&mut *self.event_tx);
+            let res =
+                ll::tox_lossy_packet_registerhandler(self.raw, fnum, id, on_lossy_packet, chan);
+            ok_or_minus!(res, ())
+        }
+    }
+
+    /// Sends the lossy packet to the given friend. The first byte of the data is
+    /// the package id and must be in [200, 254].
+    #[cfg(feature = "packets")]
+    pub fn send_lossy_packet(&mut self, fnum: i32, data: &[u8]) -> Result<(),()> {
+        assert!(data[0] >= 200 && data[0] <= 54, "invalid data slice");
+        unsafe {
+            ok_or_minus!(ll::tox_send_lossy_packet(self.raw, fnum, data.as_ptr(), data.len() as u32), ())
+        }
+    }
+
+    /// Accept lossless packets from the given friend with the given id. Id must be in [160, 191].
+    /// Panics if the id is out of the range.
+    #[cfg(feature = "packets")]
+    pub fn accept_lossless_packets(&mut self, fnum: i32, id: u8) -> Result<(),()> {
+        assert!(id >= 160 && id <= 191, "id is out of range [160, 191]");
+        unsafe {
+            let chan: *mut c_void = mem::transmute(&mut *self.event_tx);
+            let res =
+                ll::tox_lossless_packet_registerhandler(self.raw, fnum, id, on_lossless_packet, chan);
+            ok_or_minus!(res, ())
+        }
+    }
+
+    /// Sends the lossless packet to the given friend. The first byte of the data is
+    /// the package id and must be in [160, 191].
+    #[cfg(feature = "packets")]
+    pub fn send_lossless_packet(&mut self, fnum: i32, data: &[u8]) -> Result<(),()> {
+        assert!(data[0] >= 200 && data[0] <= 54, "invalid data slice");
+        unsafe {
+            ok_or_minus!(ll::tox_send_lossless_packet(self.raw, fnum, data.as_ptr(), data.len() as u32), ())
+        }
     }
 /*
     pub fn get_nospam(&self) -> [u8; 4] {
@@ -1124,6 +1175,28 @@ extern fn on_avatar_data(_: *mut ll::Tox, friendnumber: i32, format: u8, hash: *
     let hash = unsafe { ptr::read(hash as *const u8 as *const _) };
     let data = unsafe { Vec::from_raw_buf(data, datalen as usize) };
     tx.send(AvatarData(friendnumber, format, hash, data)).unwrap();
+}
+
+#[cfg(feature = "packets")]
+extern fn on_lossy_packet(_: *mut ll::Tox, fnum: i32, data: *const u8, len: u32, chan: *mut c_void) -> i32 {
+    if len == 0 { return -1 }
+    unsafe {
+        let tx: &mut Sender<Event> =  mem::transmute(chan);
+        let data = slice::from_raw_parts(data, len as usize);
+        tx.send(LossyPacket(data[0], fnum, data[1..].to_vec())).unwrap();
+    }
+    0
+}
+
+#[cfg(feature = "packets")]
+extern fn on_lossless_packet(_: *mut ll::Tox, fnum: i32, data: *const u8, len: u32, chan: *mut c_void) -> i32 {
+    if len == 0 { return -1 }
+    unsafe {
+        let tx: &mut Sender<Event> =  mem::transmute(chan);
+        let data = slice::from_raw_parts(data, len as usize);
+        tx.send(LosslessPacket(data[0], fnum, data[1..].to_vec())).unwrap();
+    }
+    0
 }
 
 // END: Callback pack

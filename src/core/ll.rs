@@ -174,9 +174,11 @@ extern {
                                             byte: u8,
                                             packet_handler_callback:
                                                 /*Option<*/extern fn
-                                                         (arg1: *mut c_void,
-                                                          arg2: *const u8,
-                                                          arg3: u32) -> c_int/*>*/,
+                                                         (arg1: *mut Tox,
+                                                          arg2: i32,
+                                                          arg3: *const u8,
+                                                          arg4: u32,
+                                                          arg5: *mut c_void) -> c_int/*>*/,
                                             object: *mut c_void) -> c_int;
     pub fn tox_send_lossy_packet(tox: *const Tox, friendnumber: i32, data: *const u8,
                                  length: u32) -> c_int;
@@ -185,9 +187,11 @@ extern {
                                                byte: u8,
                                                packet_handler_callback:
                                                    /*Option<*/extern fn
-                                                            (arg1: *mut c_void,
-                                                             arg2: *const u8,
-                                                             arg3: u32) -> c_int/*>*/,
+                                                           (arg1: *mut Tox,
+                                                            arg2: i32,
+                                                            arg3: *const u8,
+                                                            arg4: u32,
+                                                            arg5: *mut c_void) -> c_int/*>*/,
                                                object: *mut c_void) -> c_int;
     pub fn tox_send_lossless_packet(tox: *const Tox, friendnumber: i32, data: *const u8,
                                     length: u32) -> c_int;
