@@ -729,7 +729,7 @@ impl Tox {
     /// the package id and must be in [160, 191].
     #[cfg(feature = "packets")]
     pub fn send_lossless_packet(&mut self, fnum: i32, data: &[u8]) -> Result<(),()> {
-        assert!(data[0] >= 200 && data[0] <= 54, "invalid data slice");
+        assert!(data[0] >= 160 && data[0] <= 191, "invalid data slice");
         unsafe {
             ok_or_minus!(ll::tox_send_lossless_packet(self.raw, fnum, data.as_ptr(), data.len() as u32), ())
         }
