@@ -907,7 +907,7 @@ impl Tox {
 
     pub fn new_file_sender(&mut self, friendnumber: i32, filesize: u64, filename: &Path)
             -> Result<i32, ()> {
-        let filename = filename.as_os_str().as_byte_slice();
+        let filename = filename.as_os_str().as_bytes();
         let res = unsafe {
             ll::tox_new_file_sender(self.raw, friendnumber, filesize,
                                 filename.as_ptr(), filename.len() as u16)
