@@ -6,3 +6,6 @@ authors = ["Сухарик <suhr@i2pmail.org>"]
 
 [features]
 packets = []
+
+[dependencies]
+libc = "*"
