@@ -1,9 +1,8 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
-#![feature(libc, box_syntax, unsafe_destructor)]
+#![feature(libc, box_syntax)]
 
 extern crate libc;
-//extern crate core as rust_core;
 
 pub mod core;
 //pub mod av;

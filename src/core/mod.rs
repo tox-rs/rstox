@@ -9,10 +9,10 @@ use libc::{c_uint, c_void};
 
 pub use self::ll::Tox as Tox_Struct;
 pub use self::Event::*;
-pub use self::errors::*;
+use self::errors::*;
 
 mod ll;
-mod errors;
+pub mod errors;
 
 pub const MAX_NAME_LENGTH:              usize = 128;
 pub const MAX_MESSAGE_LENGTH:           usize = 1368;
@@ -45,12 +45,6 @@ pub enum Connection {
     Udp,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum ConnectionStatus {
-    Online,
-    Offline,
-}
-
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum UserStatus {
@@ -61,12 +55,12 @@ pub enum UserStatus {
 
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum MessageType {
+pub enum MessageType {
     Normal = 0,
     Action,
 }
 
-#[repr(C)]
+#[repr(u8)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ChatChange {
     PeerAdd = 0,
@@ -83,14 +77,14 @@ pub enum TransferType {
 
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum FileKind {
+pub enum FileKind {
     Data = 0,
     Avatar,
 }
 
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum FileControl {
+pub enum FileControl {
     Resume = 0,
     Pause,
     Cancel,
@@ -238,6 +232,9 @@ impl Hash {
 /// Tox events enum
 #[derive(Clone, Debug)]
 pub enum Event {
+    ConnectionStatus(Connection),
+    FriendRequest(PublicKey, String),
+    FriendMessage(u32, MessageType, String),
     GroupInvite(i32, GroupchatType, Vec<u8>),
     /// `(gnum, pnum, msg)` where `gnum` is the group number, `pnum` is the peer number
     /// and `msg` is the message
@@ -390,6 +387,13 @@ impl Tox {
         unsafe {
             let chan: *mut c_void = mem::transmute(&mut *btx);
 
+            ll::tox_callback_self_connection_status(tox, on_connection_status, chan);
+            ll::tox_callback_friend_request(tox, on_friend_request, chan);
+            ll::tox_callback_friend_message(tox, on_friend_message, chan);
+            ll::tox_callback_group_invite(tox, on_group_invite, chan);
+            ll::tox_callback_group_message(tox, on_group_message, chan);
+            ll::tox_callback_group_action(tox, on_group_action, chan);
+            ll::tox_callback_group_namelist_change(tox, on_group_namelist_change, chan);
         }
 
         Ok(Tox {
@@ -482,7 +486,36 @@ impl Tox {
             pk
         }
     }
+
     // SELF INFO
+    pub fn set_name(&mut self, name: &str) -> Result<(), SetInfoError> {
+        unsafe {
+            tox_try!(err, ll::tox_self_set_name(self.raw, name.as_ptr(), name.len(), &mut err));
+        }
+        Ok(())
+    }
+    pub fn get_name(&self) -> String {
+        unsafe {
+            let len = ll::tox_self_get_name_size(self.raw);
+            let mut bytes: Vec<u8> = Vec::with_capacity(len);
+            ll::tox_self_get_name(self.raw, bytes.as_mut_ptr());
+            String::from_utf8_unchecked(bytes)
+        }
+    }
+    pub fn set_status_message(&mut self, message: &str) -> Result<(), SetInfoError> {
+        unsafe {
+            tox_try!(err, ll::tox_self_set_status_message(self.raw, message.as_ptr(), message.len(), &mut err));
+        }
+        Ok(())
+    }
+    pub fn get_status_message(&self) -> String {
+        unsafe {
+            let len = ll::tox_self_get_status_message_size(self.raw);
+            let mut bytes: Vec<u8> = Vec::with_capacity(len);
+            ll::tox_self_get_status_message(self.raw, bytes.as_mut_ptr());
+            String::from_utf8_unchecked(bytes)
+        }
+    }
     // END OF SELF INFO
 
     pub fn add_friend(&mut self, address: &Address, message: &str) -> Result<(), FriendAddError> {
@@ -496,7 +529,7 @@ impl Tox {
         Ok(())
     }
 
-    pub fn add_friend_norequest(&mut self, address: &Address) -> Result<(), FriendAddError> {
+    pub fn add_friend_norequest(&mut self, address: &PublicKey) -> Result<(), FriendAddError> {
         unsafe {
             let c_addr = address as *const _ as *const u8;
             tox_try!(err, ll::tox_friend_add_norequest(self.raw, c_addr, &mut err));
@@ -504,8 +537,31 @@ impl Tox {
         Ok(())
     }
 
-    // Groupchats
-/*
+    pub fn delete_friend(&mut self, fnum: u32) -> Result<(), ()> {
+        unsafe {
+            let mut err: ::libc::c_uint = mem::uninitialized();
+            if ll::tox_friend_delete(self.raw, fnum, &mut err as *mut _) != 0 {
+                return Err(())
+            }
+        }
+        Ok(())
+    }
+
+    // FRIEND STUFF
+    // END OF FRIEND STUFF
+
+    pub fn send_friend_message(&mut self, fnum: u32, kind: MessageType, message: &str) -> Result<u32, FriendSendMessageError> {
+        let msg_id = unsafe {
+            tox_try!(
+                err,
+                ll::tox_friend_send_message(self.raw, fnum, kind, message.as_ptr(), message.len(), &mut err)
+            )
+        };
+        Ok(msg_id)
+    }
+
+    // BEGIN of old ugly groupchat stuff
+
     pub fn add_groupchat(&mut self) -> Result<i32, ()> {
         unsafe {
             ok_or_minus!(ll::tox_add_groupchat(self.raw))
@@ -607,12 +663,9 @@ impl Tox {
                 .map(|k| mem::transmute(k as u8))
         }
     }
-*/
-    pub fn save(&mut self) -> Vec<u8> {
-        unimplemented!()
-    }
 
-    pub fn load(&mut self, data: &[u8]) -> Result<(), ()> {
+    // END of old ugly groupchat stuff
+    pub fn save(&mut self) -> Vec<u8> {
         unimplemented!()
     }
 
@@ -645,45 +698,64 @@ macro_rules! parse_string {
 }
 
 // BEGIN: Callback pack
-/*
-extern fn on_group_invite(_: *mut ll::Tox, friendnumber: i32, ty: u8, data: *const u8, 
+
+extern fn on_connection_status(_: *mut ll::Tox, status: Connection, chan: *mut c_void) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        tx.send(ConnectionStatus(status)).unwrap();
+    }
+}
+
+extern fn on_friend_request(_: *mut ll::Tox, public_key: *const u8, message: *const u8, length: usize, chan: *mut c_void) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let pk: &PublicKey = mem::transmute(public_key);
+        let message = String::from_utf8_unchecked(slice::from_raw_parts(message, length).to_vec());
+        tx.send(FriendRequest(*pk, message)).unwrap();
+    }
+}
+
+extern fn on_friend_message(_: *mut ll::Tox, fnum: u32, kind: MessageType,
+        message: *const u8, length: usize, chan: *mut c_void) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let message = String::from_utf8_unchecked(slice::from_raw_parts(message, length).to_vec());
+        tx.send(FriendMessage(fnum, kind, message)).unwrap();
+
+    }
+}
+
+extern fn on_group_invite(_: *mut ll::Tox, friendnumber: i32, kind: u8, data: *const u8,
         length: u16, chan: *mut c_void) {
-    let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };
-    let data = unsafe {
-        Vec::from_raw_buf(data, length as usize)
-    };
-    let ty = match ty as c_uint {
-        ll::TOX_GROUPCHAT_TYPE_TEXT => GroupchatType::Text,
-        ll::TOX_GROUPCHAT_TYPE_AV => GroupchatType::Av,
-        _ => return,
-    };
-    tx.send(GroupInvite(friendnumber, ty, data)).unwrap();
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let data: Vec<u8> = From::from(slice::from_raw_parts(data, length as usize));
+        let kind: GroupchatType = mem::transmute(kind);
+        tx.send(GroupInvite(friendnumber, kind, data)).unwrap();
+    }
 }
 
 extern fn on_group_message(_: *mut ll::Tox, groupnumber: i32, frindgroupnumber: i32,
         message: *const u8, len: u16, chan: *mut c_void) {
-    let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };
+    let tx: &mut Sender<Event> = unsafe { mem::transmute(chan) };
     let msg = parse_string!(message, len);
     tx.send(GroupMessage(groupnumber, frindgroupnumber, msg)).unwrap();
 }
 
 extern fn on_group_action(_: *mut ll::Tox, groupnumber: i32, frindgroupnumber: i32,
         action: *const u8, len: u16, chan: *mut c_void) {
-    let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };    
+    let tx: &mut Sender<Event> = unsafe { mem::transmute(chan) };
     let action = parse_string!(action, len);
     tx.send(GroupMessage(groupnumber, frindgroupnumber, action)).unwrap();
 }
 
 extern fn on_group_namelist_change(_: *mut ll::Tox, groupnumber: i32, peernumber: i32,
         change: u8, chan: *mut c_void) {
-    let tx = unsafe { mem::transmute::<_, &mut Sender<Event>>(chan) };    
-    let change = match change as u32 {
-        ll::TOX_CHAT_CHANGE_PEER_ADD => ChatChange::PeerAdd,
-        ll::TOX_CHAT_CHANGE_PEER_DEL => ChatChange::PeerDel,
-        ll::TOX_CHAT_CHANGE_PEER_NAME => ChatChange::PeerName,
-        _ => return,
-    };
-    tx.send(GroupNamelistChange(groupnumber, peernumber, change)).unwrap();
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let change: ChatChange = mem::transmute(change);
+        tx.send(GroupNamelistChange(groupnumber, peernumber, change)).unwrap();
+    }
 }
-*/
+
 // END: Callback pack

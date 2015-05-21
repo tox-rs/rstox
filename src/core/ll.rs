@@ -156,6 +156,7 @@ pub const TOX_CHAT_CHANGE_PEER_DEL: ::libc::c_uint = 1;
 pub const TOX_CHAT_CHANGE_PEER_NAME: ::libc::c_uint = 2;
 pub type TOX_CHAT_CHANGE = Enum_Unnamed2;
 
+#[link(name = "toxcore")]
 extern "C" {
     pub fn tox_version_major() -> u32;
     pub fn tox_version_minor() -> u32;
