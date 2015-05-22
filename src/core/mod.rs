@@ -94,19 +94,19 @@ pub enum FileControl {
 #[repr(C)]
 #[derive(PartialEq, Clone, Debug)]
 pub struct Address {
-    id: PublicKey,
+    key: PublicKey,
     nospam: [u8; 4],
     // #[allow(dead_code)]
     checksum: [u8; 2],
 }
 
 impl Address {
-    pub fn client_id(&self) -> &PublicKey {
-        &self.id
+    pub fn public_key(&self) -> &PublicKey {
+        &self.key
     }
     fn checksum(&self) -> [u8; 2] {
         let mut check = [0u8, 0u8];
-        for (i, &x) in self.id.raw.iter().enumerate() {
+        for (i, &x) in self.key.raw.iter().enumerate() {
             check[i % 2] ^= x;
         }
         for i in 0..4 {
@@ -118,7 +118,7 @@ impl Address {
 
 impl fmt::Display for Address {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(self.id.fmt(fmt));
+        try!(self.key.fmt(fmt));
         try!(write!(fmt, "{:02X}", self.nospam[0]));
         try!(write!(fmt, "{:02X}", self.nospam[1]));
         try!(write!(fmt, "{:02X}", self.nospam[2]));
@@ -137,11 +137,11 @@ impl FromStr for Address {
             return Err(());
         }
 
-        let mut id     = [0u8; 32];
+        let mut key     = [0u8; 32];
         let mut nospam = [0u8; 4];
         let mut check  = [0u8; 2];
 
-        if parse_hex(&s[0..2 * ID_CLIENT_SIZE], &mut id[..]).is_err() {
+        if parse_hex(&s[0..2 * ID_CLIENT_SIZE], &mut key[..]).is_err() {
             return Err(());
         }
         if parse_hex(&s[2 * ID_CLIENT_SIZE..2 * ID_CLIENT_SIZE + 8],
@@ -153,7 +153,7 @@ impl FromStr for Address {
             return Err(());
         }
 
-        let addr = Address { id: PublicKey { raw: id }, nospam: nospam, checksum: check };
+        let addr = Address { key: PublicKey { raw: key }, nospam: nospam, checksum: check };
         if &addr.checksum() != &check {
             return Err(());
         }
@@ -181,7 +181,6 @@ fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
 /// `PublicKey` is the main part of tox `Address`. Other two are nospam and checksum.
 #[repr(C)]
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-#[allow(missing_copy_implementations)]
 pub struct PublicKey {
     pub raw: [u8; ID_CLIENT_SIZE],
 }
@@ -348,11 +347,23 @@ macro_rules! ok_or_minus {
 
 macro_rules! tox_try {
     ($err:ident, $exp:expr) => {{
-        let mut $err = ::std::mem::zeroed();
+        let mut $err = ::std::mem::uninitialized();
         let res = $exp;
-        match $err as u32 {
+        match $err as c_uint {
             0 => {},
             _ => return Err($err),
+        };
+        res
+    }};
+}
+
+macro_rules! tox_option {
+    ($err:ident, $exp:expr) => {{
+        let mut $err = ::std::mem::uninitialized();
+        let res = $exp;
+        match $err as c_uint {
+            0 => {},
+            _ => return None,
         };
         res
     }};
@@ -427,17 +438,17 @@ impl Tox {
     /**
         Sends a "get nodes" request to the given bootstrap node with IP, port, and
         public key to setup connections.
-        
+
         This function will attempt to connect to the node using UDP and TCP at the
         same time.
-        
+
         Tox will use the node as a TCP relay in case Tox_Options.udp_enabled was
         false, and also to connect to friends that are in TCP-only mode. Tox will
         also use the TCP connection when NAT hole punching is slow, and later switch
         to UDP if hole punching succeeds.
-        
+
         ## Panics
-        Panics if `host` strubg contains `\0`.
+        Panics if `host` string contains `\0`.
     */
     pub fn bootstrap(&mut self, host: &str, port: u16, public_key: PublicKey) -> Result<(), BootstrapError> {
         unsafe {
@@ -487,13 +498,15 @@ impl Tox {
         }
     }
 
-    // SELF INFO
+    /// Set the nickname for the Tox client
     pub fn set_name(&mut self, name: &str) -> Result<(), SetInfoError> {
         unsafe {
             tox_try!(err, ll::tox_self_set_name(self.raw, name.as_ptr(), name.len(), &mut err));
         }
         Ok(())
     }
+
+    /// Get self nickname
     pub fn get_name(&self) -> String {
         unsafe {
             let len = ll::tox_self_get_name_size(self.raw);
@@ -502,12 +515,16 @@ impl Tox {
             String::from_utf8_unchecked(bytes)
         }
     }
+
+    /// Set self status message
     pub fn set_status_message(&mut self, message: &str) -> Result<(), SetInfoError> {
         unsafe {
             tox_try!(err, ll::tox_self_set_status_message(self.raw, message.as_ptr(), message.len(), &mut err));
         }
         Ok(())
     }
+
+    /// Get self status message
     pub fn get_status_message(&self) -> String {
         unsafe {
             let len = ll::tox_self_get_status_message_size(self.raw);
@@ -516,8 +533,31 @@ impl Tox {
             String::from_utf8_unchecked(bytes)
         }
     }
-    // END OF SELF INFO
 
+    /// Set self status
+    pub fn set_status(&mut self, status: UserStatus) {
+        unsafe { ll::tox_self_set_status(self.raw, status); }
+    }
+
+    /// Get self status
+    pub fn get_status(&self) -> UserStatus {
+        unsafe { ll::tox_self_get_status(self.raw) }
+    }
+
+
+    /**
+        Add a friend to the friend list and send a friend request.
+
+        A friend request message must be at least 1 byte long and at most
+        `TOX_MAX_FRIEND_REQUEST_LENGTH`.
+
+        Friend numbers are unique identifiers used in all functions that operate on
+        friends. Once added, a friend number is stable for the lifetime of the Tox
+        object. After saving the state and reloading it, the friend numbers may not
+        be the same as before. Deleting a friend creates a gap in the friend number
+        set, which is filled by the next adding of a friend. Any pattern in friend
+        numbers should not be relied on.
+    */
     pub fn add_friend(&mut self, address: &Address, message: &str) -> Result<(), FriendAddError> {
         unsafe {
             let c_addr = address as *const _ as *const u8;
@@ -529,6 +569,18 @@ impl Tox {
         Ok(())
     }
 
+    /**
+        Add a friend without sending a friend request.
+
+        This function is used to add a friend in response to a friend request. If the
+        client receives a friend request, it can be reasonably sure that the other
+        client added this client as a friend, eliminating the need for a friend
+        request.
+
+        This function is also useful in a situation where both instances are
+        controlled by the same entity, so that this entity can perform the mutual
+        friend adding. In this case, there is no need for a friend request, either.
+    */
     pub fn add_friend_norequest(&mut self, address: &PublicKey) -> Result<(), FriendAddError> {
         unsafe {
             let c_addr = address as *const _ as *const u8;
@@ -537,10 +589,17 @@ impl Tox {
         Ok(())
     }
 
+    /**
+        Remove a friend from the friend list.
+
+        This does not notify the friend of their deletion. After calling this
+        function, this client will appear offline to the friend and no communication
+        can occur between the two.
+    */
     pub fn delete_friend(&mut self, fnum: u32) -> Result<(), ()> {
         unsafe {
             let mut err: ::libc::c_uint = mem::uninitialized();
-            if ll::tox_friend_delete(self.raw, fnum, &mut err as *mut _) != 0 {
+            if ll::tox_friend_delete(self.raw, fnum, &mut err as *mut _) == 0 {
                 return Err(())
             }
         }
@@ -548,8 +607,52 @@ impl Tox {
     }
 
     // FRIEND STUFF
+    pub fn friend_by_public_key(&self, public_key: PublicKey) -> Option<u32> {
+        unsafe {
+            let pk: *const u8 = mem::transmute(&public_key);
+            let fnum = tox_option!(err, ll::tox_friend_by_public_key(self.raw, pk, &mut err));
+            Some(fnum)
+        }
+    }
+    pub fn friend_exists(&self, fnum: u32) -> bool {
+        unsafe {
+            ll::tox_friend_exists(self.raw, fnum) != 0
+        }
+    }
+    pub fn get_friend_list(&self) -> Vec<u32> {
+        unsafe {
+            let len = ll::tox_self_get_friend_list_size(self.raw);
+            let mut list = Vec::with_capacity(len);
+            ll::tox_self_get_friend_list(self.raw, list.as_mut_ptr());
+            list
+        }
+    }
+    pub fn get_friend_public_key(&self, fnum: u32) -> Option<PublicKey> {
+        unsafe {
+            let public_key: PublicKey = mem::uninitialized();
+            let pk: *mut u8 = mem::transmute(&public_key);
+            tox_option!(err, ll::tox_friend_get_public_key(self.raw, fnum, pk, &mut err));
+            Some(public_key)
+        }
+    }
     // END OF FRIEND STUFF
+    /**
+        Send a text chat message to an online friend.
 
+        This function creates a chat message packet and pushes it into the send
+        queue.
+
+        The message length may not exceed `TOX_MAX_MESSAGE_LENGTH`. Larger messages
+        must be split by the client and sent as separate messages. Other clients can
+        then reassemble the fragments. Messages may not be empty.
+
+        The return value of this function is the message ID. If a read receipt is
+        received, the triggered `friend_read_receipt` event will be passed this message ID.
+
+        Message IDs are unique per friend. The first message ID is 0. Message IDs are
+        incremented by 1 each time a message is sent. If `UINT32_MAX` messages were
+        sent, the next message ID is 0.
+    */
     pub fn send_friend_message(&mut self, fnum: u32, kind: MessageType, message: &str) -> Result<u32, FriendSendMessageError> {
         let msg_id = unsafe {
             tox_try!(
@@ -665,8 +768,15 @@ impl Tox {
     }
 
     // END of old ugly groupchat stuff
-    pub fn save(&mut self) -> Vec<u8> {
-        unimplemented!()
+
+    /// Get all all information associated with the tox instance as a `Vec<u8>`
+    pub fn save(&self) -> Vec<u8> {
+        unsafe {
+            let len = ll::tox_get_savedata_size(self.raw);
+            let mut data = Vec::with_capacity(len);
+            ll::tox_get_savedata(self.raw, data.as_mut_ptr());
+            data
+        }
     }
 
     #[inline]
