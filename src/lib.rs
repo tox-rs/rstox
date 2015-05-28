@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
-#![feature(libc)]
 
 extern crate libc;
 
