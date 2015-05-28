@@ -393,7 +393,7 @@ impl Tox {
         };
 
         let (tx, rx) = channel::<Event>();
-        let mut btx = box tx;
+        let mut btx = Box::new(tx);
         let rrrx = Rc::new(RefCell::new(rx)); // too much bloat to just get a channel, eh?
         unsafe {
             let chan: *mut c_void = mem::transmute(&mut *btx);
