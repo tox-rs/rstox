@@ -250,6 +250,14 @@ pub enum ProxyType {
     HTTP,
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum SavedataType {
+    None = 0,
+    ToxSave,
+    SecretKey,
+}
+
 /**
     ToxOptions provides options that tox will be initalized with.
 
@@ -384,11 +392,21 @@ impl Drop for Tox {
 
 impl Tox {
     /// Create a new tox instance
-    pub fn new(opts: ToxOptions, data: Option<&[u8]>) -> Result<Tox, InitError> {
+    pub fn new(opts: &mut ToxOptions, data: Option<&[u8]>) -> Result<Tox, InitError> {
         let tox = unsafe {
             match data {
-                Some(data) => tox_try!(err, ll::tox_new(&opts.txo, data.as_ptr(), data.len(), &mut err)),
-                None => tox_try!(err, ll::tox_new(&opts.txo, ptr::null(), 0, &mut err)),
+                Some(data) => {
+                    opts.txo.savedata_type = SavedataType::ToxSave;
+                    opts.txo.savedata_data = data.as_ptr();
+                    opts.txo.savedata_length = data.len();
+                    tox_try!(err, ll::tox_new(&opts.txo, &mut err))
+                },
+                None => {
+                    opts.txo.savedata_type = SavedataType::None;
+                    opts.txo.savedata_data = ptr::null();
+                    opts.txo.savedata_length = 0;
+                    tox_try!(err, ll::tox_new(&opts.txo, &mut err))
+                }
             }
         };
 
