@@ -12,7 +12,7 @@ static BOOTSTRAP_KEY: &'static str =
 static BOT_NAME: &'static str = "yuppi";
 
 fn main() {
-    let mut tox = Tox::new(ToxOptions::new(), None).unwrap();
+    let mut tox = Tox::new(&mut ToxOptions::new(), None).unwrap();
     tox.set_name(BOT_NAME).unwrap();
     let bootstrap_key = BOOTSTRAP_KEY.parse().unwrap();
     tox.bootstrap(BOOTSTRAP_IP, BOOTSTRAP_PORT, bootstrap_key).unwrap();

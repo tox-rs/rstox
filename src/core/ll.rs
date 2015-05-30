@@ -18,6 +18,9 @@ pub struct Tox_Options {
     pub proxy_port: u16,
     pub start_port: u16,
     pub end_port: u16,
+    pub savedata_type: super::SavedataType,
+    pub savedata_data: *const u8,
+    pub savedata_length: usize,
 }
 
 impl ::std::default::Default for Tox_Options {
@@ -167,8 +170,7 @@ extern "C" {
     pub fn tox_options_new(error: *mut TOX_ERR_OPTIONS_NEW)
      -> *mut Tox_Options;
     pub fn tox_options_free(options: *mut Tox_Options) -> ();
-    pub fn tox_new(options: *const Tox_Options, data: *const u8,
-                   length: usize, error: *mut errors::InitError) -> *mut Tox;
+    pub fn tox_new(options: *const Tox_Options, error: *mut errors::InitError) -> *mut Tox;
     pub fn tox_kill(tox: *mut Tox) -> ();
     pub fn tox_get_savedata_size(tox: *const Tox) -> usize;
     pub fn tox_get_savedata(tox: *const Tox, data: *mut u8) -> ();
