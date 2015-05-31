@@ -392,7 +392,7 @@ impl Drop for Tox {
 
 impl Tox {
     /// Create a new tox instance
-    pub fn new(opts: &mut ToxOptions, data: Option<&[u8]>) -> Result<Tox, InitError> {
+    pub fn new(mut opts: ToxOptions, data: Option<&[u8]>) -> Result<Tox, InitError> {
         let tox = unsafe {
             match data {
                 Some(data) => {
