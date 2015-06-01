@@ -234,6 +234,8 @@ pub enum Event {
     ConnectionStatus(Connection),
     FriendRequest(PublicKey, String),
     FriendMessage(u32, MessageType, String),
+    LossyPackage(u32, Vec<u8>),
+    LosslessPackage(u32, Vec<u8>),
     GroupInvite(i32, GroupchatType, Vec<u8>),
     /// `(gnum, pnum, msg)` where `gnum` is the group number, `pnum` is the peer number
     /// and `msg` is the message
@@ -419,6 +421,10 @@ impl Tox {
             ll::tox_callback_self_connection_status(tox, on_connection_status, chan);
             ll::tox_callback_friend_request(tox, on_friend_request, chan);
             ll::tox_callback_friend_message(tox, on_friend_message, chan);
+
+            ll::tox_callback_friend_lossy_packet(tox, on_lossy_package, chan);
+            ll::tox_callback_friend_lossless_packet(tox, on_lossless_package, chan);
+
             ll::tox_callback_group_invite(tox, on_group_invite, chan);
             ll::tox_callback_group_message(tox, on_group_message, chan);
             ll::tox_callback_group_action(tox, on_group_action, chan);
@@ -838,7 +844,7 @@ extern fn on_friend_request(_: *mut ll::Tox, public_key: *const u8, message: *co
     unsafe {
         let tx: &mut Sender<Event> = mem::transmute(chan);
         let pk: &PublicKey = mem::transmute(public_key);
-        let message = String::from_utf8_unchecked(slice::from_raw_parts(message, length).to_vec());
+        let message = String::from_utf8_lossy(slice::from_raw_parts(message, length)).into_owned();
         tx.send(FriendRequest(*pk, message)).unwrap();
     }
 }
@@ -847,9 +853,24 @@ extern fn on_friend_message(_: *mut ll::Tox, fnum: u32, kind: MessageType,
         message: *const u8, length: usize, chan: *mut c_void) {
     unsafe {
         let tx: &mut Sender<Event> = mem::transmute(chan);
-        let message = String::from_utf8_unchecked(slice::from_raw_parts(message, length).to_vec());
+        let message = String::from_utf8_lossy(slice::from_raw_parts(message, length)).into_owned();
         tx.send(FriendMessage(fnum, kind, message)).unwrap();
 
+    }
+}
+
+extern fn on_lossy_package(_: *mut ll::Tox, fnum: u32, data: *const u8, length: usize, chan: *mut c_void) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let data: Vec<u8> = From::from(slice::from_raw_parts(data, length as usize));
+        tx.send(LossyPackage(fnum, data)).unwrap();
+    }
+}
+extern fn on_lossless_package(_: *mut ll::Tox, fnum: u32, data: *const u8, length: usize, chan: *mut c_void) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let data: Vec<u8> = From::from(slice::from_raw_parts(data, length as usize));
+        tx.send(LosslessPackage(fnum, data)).unwrap();
     }
 }
 
