@@ -14,14 +14,18 @@ use self::errors::*;
 mod ll;
 pub mod errors;
 
+pub const PUBLIC_KEY_SIZE:              usize = 32;
+pub const SECRET_KEY_SIZE:              usize = 32;
+pub const ADDRESS_SIZE:                 usize = PUBLIC_KEY_SIZE + 6;
 pub const MAX_NAME_LENGTH:              usize = 128;
-pub const MAX_MESSAGE_LENGTH:           usize = 1368;
 pub const MAX_STATUSMESSAGE_LENGTH:     usize = 1007;
-pub const TOX_MAX_FRIENDREQUEST_LENGTH: usize = 1016;
-pub const ID_CLIENT_SIZE:               usize = 32;
-pub const ADDRESS_SIZE:                 usize = ID_CLIENT_SIZE + 6;
-pub const AVATAR_MAX_DATA_LENGTH:       usize = 16384;
+pub const MAX_FRIENDREQUEST_LENGTH:     usize = 1016;
+pub const MAX_MESSAGE_LENGTH:           usize = 1368;
+pub conts MAX_CUSTOM_PACKET_SIZE        usize = 1367;
 pub const HASH_LENGTH:                  usize = 32;
+pub const FILE_ID_LENGTH                usize = 32;
+pub const MAX_FILENAME_LENGTH           usize = 255;
+
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[repr(u8)]
@@ -110,7 +114,7 @@ impl Address {
             check[i % 2] ^= x;
         }
         for i in 0..4 {
-            check[(ID_CLIENT_SIZE + i) % 2] ^= self.nospam[i];
+            check[(PUBLIC_KEY_SIZE + i) % 2] ^= self.nospam[i];
         }
         check
     }
@@ -141,14 +145,14 @@ impl FromStr for Address {
         let mut nospam = [0u8; 4];
         let mut check  = [0u8; 2];
 
-        if parse_hex(&s[0..2 * ID_CLIENT_SIZE], &mut key[..]).is_err() {
+        if parse_hex(&s[0..2 * PUBLIC_KEY_SIZE], &mut key[..]).is_err() {
             return Err(());
         }
-        if parse_hex(&s[2 * ID_CLIENT_SIZE..2 * ID_CLIENT_SIZE + 8],
+        if parse_hex(&s[2 * PUBLIC_KEY_SIZE..2 * PUBLIC_KEY_SIZE + 8],
            &mut nospam[..]).is_err() {
             return Err(());
         }
-        if parse_hex(&s[2 * ID_CLIENT_SIZE + 8..2 * ADDRESS_SIZE],
+        if parse_hex(&s[2 * PUBLIC_KEY_SIZE + 8..2 * ADDRESS_SIZE],
            &mut check[..]).is_err() {
             return Err(());
         }
@@ -182,7 +186,7 @@ fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
 #[repr(C)]
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct PublicKey {
-    pub raw: [u8; ID_CLIENT_SIZE],
+    pub raw: [u8; PUBLIC_KEY_SIZE],
 }
 
 impl fmt::Display for PublicKey {
@@ -197,11 +201,11 @@ impl fmt::Display for PublicKey {
 impl FromStr for PublicKey {
     type Err = ();
     fn from_str(s: &str) -> Result<PublicKey, ()> {
-        if s.len() != 2 * ID_CLIENT_SIZE {
+        if s.len() != 2 * PUBLIC_KEY_SIZE {
             return Err(());
         }
 
-        let mut id = [0u8; ID_CLIENT_SIZE];
+        let mut id = [0u8; PUBLIC_KEY_SIZE];
 
         try!(parse_hex(s, &mut id[..]));
         Ok(PublicKey { raw: id })
