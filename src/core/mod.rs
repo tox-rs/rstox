@@ -21,10 +21,10 @@ pub const MAX_NAME_LENGTH:              usize = 128;
 pub const MAX_STATUSMESSAGE_LENGTH:     usize = 1007;
 pub const MAX_FRIENDREQUEST_LENGTH:     usize = 1016;
 pub const MAX_MESSAGE_LENGTH:           usize = 1368;
-pub conts MAX_CUSTOM_PACKET_SIZE        usize = 1367;
+pub const MAX_CUSTOM_PACKET_SIZE:       usize = 1367;
 pub const HASH_LENGTH:                  usize = 32;
-pub const FILE_ID_LENGTH                usize = 32;
-pub const MAX_FILENAME_LENGTH           usize = 255;
+pub const FILE_ID_LENGTH:               usize = 32;
+pub const MAX_FILENAME_LENGTH:          usize = 255;
 
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -244,6 +244,7 @@ pub enum Event {
     /// `(gnum, pnum, msg)` where `gnum` is the group number, `pnum` is the peer number
     /// and `msg` is the message
     GroupMessage(i32, i32, String),
+    GroupTitle(i32, i32, String),
     /// `(gnum, pnum, ChatChange)`
     GroupNamelistChange(i32, i32, ChatChange),
 }
@@ -432,6 +433,7 @@ impl Tox {
             ll::tox_callback_group_invite(tox, on_group_invite, chan);
             ll::tox_callback_group_message(tox, on_group_message, chan);
             ll::tox_callback_group_action(tox, on_group_action, chan);
+            ll::tox_callback_group_title(tox, on_group_title, chan);
             ll::tox_callback_group_namelist_change(tox, on_group_namelist_change, chan);
         }
 
@@ -774,6 +776,23 @@ impl Tox {
         Ok(real_names)
     }
 
+    pub fn group_get_title(&self, groupnumber: i32) -> Option<String> {
+        unsafe {
+            let tox: *mut ll::Tox = mem::transmute(self.raw);
+            let mut title: Vec<u8> = Vec::with_capacity(128);
+            let len = some_or_minus!(ll::tox_group_get_title(tox, groupnumber, title.as_mut_ptr(), 128));
+            title.set_len(len.unwrap() as usize);
+            Some(String::from_utf8_unchecked(title))
+        }
+    }
+
+    pub fn group_set_title(&mut self, groupnumber: i32, title: &str) -> Result<(),()> {
+        if title.len() > 128 { return Err(()) }
+        unsafe {
+             ok_or_minus!(ll::tox_group_set_title(self.raw, groupnumber, title.as_ptr(), title.len() as u8), ())
+        }
+    }
+
     pub fn count_chatlist(&self) -> u32 {
         unsafe { ll::tox_count_chatlist(&*self.raw) }
     }
@@ -900,6 +919,13 @@ extern fn on_group_action(_: *mut ll::Tox, groupnumber: i32, frindgroupnumber: i
     let tx: &mut Sender<Event> = unsafe { mem::transmute(chan) };
     let action = parse_string!(action, len);
     tx.send(GroupMessage(groupnumber, frindgroupnumber, action)).unwrap();
+}
+
+extern fn on_group_title(_: *mut ll::Tox, groupnumber: i32, frindgroupnumber: i32,
+        message: *const u8, length: u8, chan: *mut c_void) {
+    let tx: &mut Sender<Event> = unsafe { mem::transmute(chan) };
+    let msg = parse_string!(message, length);
+    tx.send(GroupTitle(groupnumber, frindgroupnumber, msg)).unwrap();
 }
 
 extern fn on_group_namelist_change(_: *mut ll::Tox, groupnumber: i32, peernumber: i32,
