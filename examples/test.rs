@@ -1,6 +1,3 @@
-#![feature(box_syntax)]
-#![feature(core, std_misc)]
-
 extern crate rstox;
 
 use rstox::core::*;
