@@ -13,7 +13,7 @@ To use `rstox` in your project, add to your `Cargo.toml`:
 ```
 [dependencies.rstox]
 git = "https://github.com/suhr/rstox.git"
-branch="new-api"
+branch = "new-api"
 ```
 and make something - [example](/examples/test.rs)
 
