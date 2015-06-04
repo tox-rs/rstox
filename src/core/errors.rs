@@ -3,6 +3,8 @@
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum InitError {
+    // `NoError` doesn't exists in rust code
+    #[doc(hidden)] NoError = 0,
     NullError = 1,
     MallocError,
     PortAllocError,
@@ -17,6 +19,7 @@ pub enum InitError {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum BootstrapError {
+    #[doc(hidden)] NoError = 0,
     NullError = 1,
     BadHost,
     BadPort,
@@ -25,6 +28,7 @@ pub enum BootstrapError {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SetInfoError {
+    #[doc(hidden)] NoError = 0,
     NullError = 1,
     TooLong,
 }
@@ -32,6 +36,7 @@ pub enum SetInfoError {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FriendAddError {
+    #[doc(hidden)] NoError = 0,
     NullError = 1,
     TooLong,
     NoMessage,
@@ -45,6 +50,7 @@ pub enum FriendAddError {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FriendSendMessageError {
+    #[doc(hidden)] NoError = 0,
     NullError = 1,
     NotFound,
     NotConnected,
@@ -56,6 +62,7 @@ pub enum FriendSendMessageError {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FileControlError {
+    #[doc(hidden)] NoError = 0,
     FriendNotFound = 1,
     FriendNotConnected,
     NotFound,
@@ -68,6 +75,7 @@ pub enum FileControlError {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FileSeekError {
+    #[doc(hidden)] NoError = 0,
     FriendNotFound = 1,
     FriendNotConnected,
     NotFound,
@@ -79,6 +87,7 @@ pub enum FileSeekError {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FileGetError {
+    #[doc(hidden)] NoError = 0,
     FriendNotFound = 1,
     NotFound,
 }
@@ -86,6 +95,7 @@ pub enum FileGetError {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FileSendError {
+    #[doc(hidden)] NoError = 0,
     NullError = 1,
     FriendNotFound,
     FriendNotConnected,
@@ -96,6 +106,7 @@ pub enum FileSendError {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FileSendChunkError {
+    #[doc(hidden)] NoError = 0,
     NullError = 1,
     FriendNotFound,
     FriendNotConnected,
@@ -109,6 +120,7 @@ pub enum FileSendChunkError {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FriendCustomPacketError {
+    #[doc(hidden)] NoError = 0,
     NullError = 1,
     FriendNotFound,
     FriendNotConnected,
