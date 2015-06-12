@@ -717,6 +717,16 @@ impl Tox {
         String::from_utf8(vec).ok()
     }
 
+    pub fn group_peer_pubkey(&self, groupnumber: i32, peernumber: i32) -> Option<PublicKey> {
+        let res = unsafe {
+            let mut pk: PublicKey = mem::uninitialized();
+            some_or_minus!(ll::tox_group_peer_pubkey(&*self.raw, groupnumber, peernumber,
+                                &mut pk as *mut _ as *mut u8));
+            pk
+        };
+        Some(res)
+    }
+
     pub fn invite_friend(&mut self, friendnumber: i32, groupnumber: i32) -> Result<(), ()> {
         unsafe { ok_or_minus!(ll::tox_invite_friend(self.raw, friendnumber, groupnumber), ()) }
     }
