@@ -707,13 +707,11 @@ impl Tox {
 
     pub fn group_peername(&self, groupnumber: i32, peernumber: i32) -> Option<String> {
         let mut vec = Vec::with_capacity(MAX_NAME_LENGTH);
-        let len = unsafe {
-            let len = ll::tox_group_peername(&*self.raw, groupnumber, peernumber,
-                                         vec.as_mut_ptr());
+        unsafe {
+            let len = ll::tox_group_peername(&*self.raw, groupnumber, peernumber, vec.as_mut_ptr());
+            some_or_minus!(len);
             vec.set_len(len as usize);
-            len
         };
-        some_or_minus!(len);
         String::from_utf8(vec).ok()
     }
 
