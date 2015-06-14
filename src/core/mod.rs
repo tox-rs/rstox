@@ -541,6 +541,7 @@ impl Tox {
         unsafe {
             let len = ll::tox_self_get_name_size(self.raw);
             let mut bytes: Vec<u8> = Vec::with_capacity(len);
+            bytes.set_len(len);
             ll::tox_self_get_name(self.raw, bytes.as_mut_ptr());
             String::from_utf8_unchecked(bytes)
         }
@@ -559,6 +560,7 @@ impl Tox {
         unsafe {
             let len = ll::tox_self_get_status_message_size(self.raw);
             let mut bytes: Vec<u8> = Vec::with_capacity(len);
+            bytes.set_len(len);
             ll::tox_self_get_status_message(self.raw, bytes.as_mut_ptr());
             String::from_utf8_unchecked(bytes)
         }
@@ -653,6 +655,7 @@ impl Tox {
         unsafe {
             let len = ll::tox_self_get_friend_list_size(self.raw);
             let mut list = Vec::with_capacity(len);
+            list.set_len(len);
             ll::tox_self_get_friend_list(self.raw, list.as_mut_ptr());
             list
         }
@@ -829,6 +832,7 @@ impl Tox {
         unsafe {
             let len = ll::tox_get_savedata_size(self.raw);
             let mut data = Vec::with_capacity(len);
+            data.set_len(len);
             ll::tox_get_savedata(self.raw, data.as_mut_ptr());
             data
         }
