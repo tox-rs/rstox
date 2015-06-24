@@ -8,7 +8,6 @@ pub type Tox = Tox_Struct;
 #[repr(C)]
 #[allow(missing_copy_implementations)]
 pub struct ToxAv;
-unsafe impl Send for *mut ToxAv { }
 
 pub type ToxAVCallback =
     ::std::option::Option<extern "C" fn
@@ -27,7 +26,7 @@ pub type ToxAvAudioCallback =
                                data: *mut ::libc::c_void)>;
 */
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 pub enum ToxAvCallbackID {
   OnInvite = 0,
   OnRinging,
