@@ -3,13 +3,20 @@ sudo: required
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y build-essential libtool autotools-dev automake checkinstall check git yasm pkg-config
+  - sudo apt-get install -y build-essential libtool autotools-dev automake checkinstall check git yasm pkg-config libvpx-dev
+  - wget http://downloads.xiph.org/releases/opus/opus-1.0.3.tar.gz
+  - tar xvzf opus-1.0.3.tar.gz
+  - cd opus-1.0.3
+  - ./configure
+  - make
+  - sudo make install
+  - cd ..
   - git clone git://github.com/jedisct1/libsodium.git
   - cd libsodium
-  - git checkout tags/1.0.0
+  - git checkout tags/1.0.3
   - ./autogen.sh
   - ./configure && make check
-  - sudo checkinstall --install --pkgname libsodium --pkgversion 1.0.0 --nodoc -y
+  - sudo checkinstall --install --pkgname libsodium --pkgversion 1.0.3 --nodoc -y
   - sudo ldconfig
   - cd ..
   - git clone https://github.com/irungentoo/toxcore.git
