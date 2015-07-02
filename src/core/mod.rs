@@ -857,11 +857,7 @@ impl Tox {
 macro_rules! parse_string {
     ($p:expr, $l:ident) => {
         unsafe {
-            let slice = slice::from_raw_parts($p, $l as usize);
-            match ::std::str::from_utf8(slice) {
-                Ok(s) => s.to_string(),
-                _ => return,
-            }
+            String::from_utf8_lossy(slice::from_raw_parts($p, $l as usize)).into_owned()
         }
     }
 }
