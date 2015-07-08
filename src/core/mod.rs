@@ -238,6 +238,11 @@ pub enum Event {
     ConnectionStatus(Connection),
     FriendRequest(PublicKey, String),
     FriendMessage(u32, MessageType, String),
+    FriendName(u32, String),
+    FriendStatusMessage(u32, String),
+    FriendStatus(u32, UserStatus),
+    FriendConnectionStatus(u32, Connection),
+    FriendTyping(u32, bool),
     LossyPackage(u32, Vec<u8>),
     LosslessPackage(u32, Vec<u8>),
     GroupInvite(i32, GroupchatType, Vec<u8>),
@@ -426,6 +431,12 @@ impl Tox {
             ll::tox_callback_self_connection_status(tox, on_connection_status, chan);
             ll::tox_callback_friend_request(tox, on_friend_request, chan);
             ll::tox_callback_friend_message(tox, on_friend_message, chan);
+
+            ll::tox_callback_friend_name(tox, on_friend_name, chan);
+            ll::tox_callback_friend_status_message(tox, on_friend_status_message, chan);
+            ll::tox_callback_friend_status(tox, on_friend_status, chan);
+            ll::tox_callback_friend_connection_status(tox, on_friend_connection_status, chan);
+            ll::tox_callback_friend_typing(tox, on_friend_typing, chan);
 
             ll::tox_callback_friend_lossy_packet(tox, on_lossy_package, chan);
             ll::tox_callback_friend_lossless_packet(tox, on_lossless_package, chan);
@@ -887,6 +898,43 @@ extern fn on_friend_message(_: *mut ll::Tox, fnum: u32, kind: MessageType,
         let message = String::from_utf8_lossy(slice::from_raw_parts(message, length)).into_owned();
         tx.send(FriendMessage(fnum, kind, message)).unwrap();
 
+    }
+}
+
+extern fn on_friend_name(_: *mut ll::Tox, fnum: u32, name: *const u8, length: usize, chan: *mut c_void) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let name = String::from_utf8_lossy(slice::from_raw_parts(name, length)).into_owned();
+        tx.send(FriendName(fnum, name)).unwrap();
+    }
+}
+
+extern fn on_friend_status_message(_: *mut ll::Tox, fnum: u32, message: *const u8, length: usize, chan: *mut c_void) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let message = String::from_utf8_lossy(slice::from_raw_parts(message, length)).into_owned();
+        tx.send(FriendStatusMessage(fnum, message)).unwrap();
+    }
+}
+
+extern fn on_friend_status(_: *mut ll::Tox, fnum: u32, status: UserStatus, chan: *mut c_void) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        tx.send(FriendStatus(fnum, status)).unwrap();
+    }
+}
+
+extern fn on_friend_connection_status(_: *mut ll::Tox, fnum: u32, status: Connection, chan: *mut c_void) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        tx.send(FriendConnectionStatus(fnum, status)).unwrap();
+    }
+}
+
+extern fn on_friend_typing(_: *mut ll::Tox, fnum: u32, is_typing: u8, chan: *mut c_void) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        tx.send(FriendTyping(fnum, is_typing != 0)).unwrap();
     }
 }
 

@@ -242,7 +242,7 @@ extern "C" {
                                error: *mut TOX_ERR_FRIEND_QUERY) -> u8;
     pub fn tox_callback_friend_name(tox: *mut Tox,
                                     function:
-                                        *mut tox_friend_name_cb,
+                                        tox_friend_name_cb, /* *mut tox_... */
                                     user_data: *mut ::libc::c_void) -> ();
     pub fn tox_friend_get_status_message_size(tox: *const Tox,
                                               friend_number: u32,
@@ -255,28 +255,28 @@ extern "C" {
                                          error: *mut TOX_ERR_FRIEND_QUERY)
      -> u8;
     pub fn tox_callback_friend_status_message(tox: *mut Tox,
-                                              function: *mut tox_friend_status_message_cb,
+                                              function: tox_friend_status_message_cb, /* *mut tox_... */
                                               user_data: *mut ::libc::c_void)
      -> ();
     pub fn tox_friend_get_status(tox: *const Tox, friend_number: u32,
                                  error: *mut TOX_ERR_FRIEND_QUERY)
      -> UserStatus;
     pub fn tox_callback_friend_status(tox: *mut Tox,
-                                      function: *mut tox_friend_status_message_cb,
+                                      function: tox_friend_status_cb, /* *mut tox_... */
                                       user_data: *mut ::libc::c_void) -> ();
     pub fn tox_friend_get_connection_status(tox: *const Tox,
                                             friend_number: u32,
                                             error: *mut TOX_ERR_FRIEND_QUERY)
      -> Connection;
     pub fn tox_callback_friend_connection_status(tox: *mut Tox,
-                                                 function: *mut tox_friend_connection_status_cb,
+                                                 function: tox_friend_connection_status_cb, /* *mut tox_... */
                                                  user_data:
                                                      *mut ::libc::c_void)
      -> ();
     pub fn tox_friend_get_typing(tox: *const Tox, friend_number: u32,
                                  error: *mut TOX_ERR_FRIEND_QUERY) -> u8;
     pub fn tox_callback_friend_typing(tox: *mut Tox,
-                                      function: *mut tox_friend_typing_cb,
+                                      function: tox_friend_typing_cb, /* *mut tox_... */
                                       user_data: *mut ::libc::c_void) -> ();
     pub fn tox_self_set_typing(tox: *mut Tox, friend_number: u32,
                                is_typing: u8, error: *mut TOX_ERR_SET_TYPING)
