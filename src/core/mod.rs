@@ -719,6 +719,14 @@ impl Tox {
             Some(String::from_utf8_unchecked(bytes))
         }
     }
+    /**
+        Returns friend status, or, if there is an error, `None`.
+    */
+    pub fn get_friend_status(&self, fnum: u32) -> Option<UserStatus> {
+        unsafe {
+            Some(tox_option!(err, ll::tox_friend_get_status(self.raw, fnum, &mut err)))
+        }
+    }
     // END OF FRIEND STUFF
     /**
         Send a text chat message to an online friend.
