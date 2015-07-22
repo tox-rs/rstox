@@ -691,6 +691,20 @@ impl Tox {
             Some(tox_option!(err, ll::tox_friend_get_last_online(self.raw, fnum, &mut err)))
         }
     }
+    /**
+        Returns friend name, or, if friend doesn't exist, `None`.
+    */
+    pub fn get_friend_name(&self, fnum: u32) -> Option<String> {
+        unsafe {
+            let len = tox_option!(err, ll::tox_friend_get_name_size(self.raw,
+                                fnum, &mut err));
+            let mut bytes: Vec<u8> = Vec::with_capacity(len);
+            bytes.set_len(len);
+            tox_option!(err, ll::tox_friend_get_name(self.raw, fnum,
+                    bytes.as_mut_ptr(), &mut err));
+            Some(String::from_utf8_unchecked(bytes))
+        }
+    }
     // END OF FRIEND STUFF
     /**
         Send a text chat message to an online friend.
