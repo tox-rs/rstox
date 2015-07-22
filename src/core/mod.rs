@@ -679,6 +679,18 @@ impl Tox {
             Some(public_key)
         }
     }
+    /**
+        Returns an `Option<u64>` with number of seconds since January 1, 1970
+        0:00:00 UTC (aka "UNIX timestamp").
+
+        In case where there is no friend with supplied `fnum`, `None` is
+        returned.
+    */
+    pub fn get_friend_last_online(&self, fnum: u32) -> Option<u64> {
+        unsafe {
+            Some(tox_option!(err, ll::tox_friend_get_last_online(self.raw, fnum, &mut err)))
+        }
+    }
     // END OF FRIEND STUFF
     /**
         Send a text chat message to an online friend.
