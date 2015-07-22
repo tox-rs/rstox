@@ -705,6 +705,20 @@ impl Tox {
             Some(String::from_utf8_unchecked(bytes))
         }
     }
+    /**
+        Returns status message of a friend, or, if friend doesn't exist, `None`.
+    */
+    pub fn get_friend_status_message(&self, fnum: u32) -> Option<String> {
+        unsafe {
+            let len = tox_option!(err, ll::tox_friend_get_status_message_size(self.raw,
+                                fnum, &mut err));
+            let mut bytes: Vec<u8> = Vec::with_capacity(len);
+            bytes.set_len(len);
+            tox_option!(err, ll::tox_friend_get_status_message(self.raw, fnum,
+                    bytes.as_mut_ptr(), &mut err));
+            Some(String::from_utf8_unchecked(bytes))
+        }
+    }
     // END OF FRIEND STUFF
     /**
         Send a text chat message to an online friend.
