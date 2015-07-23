@@ -657,11 +657,13 @@ impl Tox {
             Some(fnum)
         }
     }
+
     pub fn friend_exists(&self, fnum: u32) -> bool {
         unsafe {
             ll::tox_friend_exists(self.raw, fnum) != 0
         }
     }
+
     pub fn get_friend_list(&self) -> Vec<u32> {
         unsafe {
             let len = ll::tox_self_get_friend_list_size(self.raw);
@@ -671,6 +673,7 @@ impl Tox {
             list
         }
     }
+
     pub fn get_friend_public_key(&self, fnum: u32) -> Option<PublicKey> {
         unsafe {
             let public_key: PublicKey = mem::uninitialized();
@@ -679,6 +682,7 @@ impl Tox {
             Some(public_key)
         }
     }
+
     /**
         Returns an `Option<u64>` with number of seconds since January 1, 1970
         0:00:00 UTC (aka "UNIX timestamp").
@@ -691,9 +695,8 @@ impl Tox {
             Some(tox_option!(err, ll::tox_friend_get_last_online(self.raw, fnum, &mut err)))
         }
     }
-    /**
-        Returns friend name, or, if friend doesn't exist, `None`.
-    */
+
+    /// Returns friend name, or, if friend doesn't exist, `None`.
     pub fn get_friend_name(&self, fnum: u32) -> Option<String> {
         unsafe {
             let len = tox_option!(err, ll::tox_friend_get_name_size(self.raw,
@@ -705,9 +708,8 @@ impl Tox {
             Some(String::from_utf8_unchecked(bytes))
         }
     }
-    /**
-        Returns status message of a friend, or, if friend doesn't exist, `None`.
-    */
+
+    /// Returns status message of a friend, or, if friend doesn't exist, `None`.
     pub fn get_friend_status_message(&self, fnum: u32) -> Option<String> {
         unsafe {
             let len = tox_option!(err, ll::tox_friend_get_status_message_size(self.raw,
@@ -719,9 +721,8 @@ impl Tox {
             Some(String::from_utf8_unchecked(bytes))
         }
     }
-    /**
-        Returns friend status, or, if there is an error, `None`.
-    */
+
+    /// Returns friend status, or, if there is an error, `None`.
     pub fn get_friend_status(&self, fnum: u32) -> Option<UserStatus> {
         unsafe {
             Some(tox_option!(err, ll::tox_friend_get_status(self.raw, fnum, &mut err)))
