@@ -728,6 +728,13 @@ impl Tox {
             Some(tox_option!(err, ll::tox_friend_get_status(self.raw, fnum, &mut err)))
         }
     }
+
+    /// Return status of connection of friend, or if friend doesn't exist, `None`.
+    pub fn get_friend_connection_status(&self, fnum: u32) -> Option<Connection> {
+        unsafe {
+            Some(tox_option!(err, ll::tox_friend_get_connection_status(self.raw, fnum, &mut err)))
+        }
+    }
     // END OF FRIEND STUFF
     /**
         Send a text chat message to an online friend.
