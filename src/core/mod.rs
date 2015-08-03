@@ -212,26 +212,6 @@ impl FromStr for PublicKey {
     }
 }
 
-/// Locally-calculated cryptographic hash of the avatar data
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-#[allow(missing_copy_implementations)]
-pub struct Hash {
-    pub hash: [u8; HASH_LENGTH]
-}
-/*
-impl Hash {
-    pub fn new(data: &[u8]) -> Result<Hash, ()> {
-        let mut hash: Hash = unsafe { mem::uninitialized() };
-        let res = unsafe {
-            ll::tox_hash(hash.hash.as_mut_ptr(), data.as_ptr(), data.len() as u32)
-        };
-        match res {
-            0 => Ok(hash),
-            _ => Err(()),
-        }
-    }
-}
-*/
 /// Tox events enum
 #[derive(Clone, Debug)]
 pub enum Event {
