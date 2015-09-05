@@ -16,19 +16,19 @@ before_install:
   - tar xvzf opus-1.0.3.tar.gz
   - cd opus-1.0.3
   - ./configure
-  - make
+  - make -j$(nproc)
   - sudo make install
   - cd ..
   - git clone git://github.com/jedisct1/libsodium.git
   - cd libsodium
   - git checkout tags/1.0.3
   - ./autogen.sh
-  - ./configure && make check
+  - ./configure && make -j$(nproc)
   - sudo checkinstall --install --pkgname libsodium --pkgversion 1.0.3 --nodoc -y
   - sudo ldconfig
   - cd ..
   - git clone https://github.com/irungentoo/toxcore.git
-  - cd toxcore && autoreconf -if && ./configure && make && sudo make install
+  - cd toxcore && autoreconf -if && ./configure && make -j$(nproc) && sudo make install
   - echo '/usr/local/lib/' | sudo tee -a /etc/ld.so.conf.d/locallib.conf
   - sudo ldconfig
   - sudo add-apt-repository --yes ppa:hansjorg/rust
