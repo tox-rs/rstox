@@ -3,7 +3,7 @@ use libc::{c_int, c_uint, c_void};
 use std::sync::Arc;
 use std::cell::{RefCell, UnsafeCell};
 use std::error::Error;
-use std::{fmt, raw, slice, mem};
+use std::{fmt, slice, mem};
 use std::thread::{sleep_ms};
 use core::{Tox};
 
