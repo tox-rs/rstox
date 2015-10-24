@@ -45,7 +45,7 @@ pub mod ll;
 #[derive(Clone, Copy, Debug)]
 pub enum TOXAV_ERR_NEW {
     /// The function returned successfully.
-    TOXAV_ERROR_NEW_OK = 0,
+    TOXAV_ERR_NEW_OK,
     /// One of the arguments to the function was NULL when it was not expected.
     TOXAV_ERR_NEW_NULL,
     /// Memory allocation failure while trying to allocate structures required
@@ -53,6 +53,25 @@ pub enum TOXAV_ERR_NEW {
     TOXAV_ERR_NEW_MALLOC,
     /// Attempted to create a second session for the same Tox instance.
     TOXAV_ERR_NEW_MULTIPLE,
+}
+
+impl Error for TOXAV_ERR_NEW {
+    fn description(&self) -> &str {
+        use self::TOXAV_ERR_NEW::*;
+        match *self {
+            TOXAV_ERR_NEW_OK => "new: no error",
+            TOXAV_ERR_NEW_NULL => "new: null",
+            TOXAV_ERR_NEW_MALLOC => "new: failed to allocate memory",
+            TOXAV_ERR_NEW_MULTIPLE =>
+                "new: attempted to create a second session for same Tox instance",
+        }
+    }
+}
+
+impl fmt::Display for TOXAV_ERR_NEW {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.description())
+    }
 }
 
 
@@ -81,17 +100,17 @@ pub enum TOXAV_ERR_CALL {
     TOXAV_ERR_CALL_INVALID_BIT_RATE,
 }
 
-use self::TOXAV_ERR_CALL::*;
 impl Error for TOXAV_ERR_CALL {
     fn description(&self) -> &str {
+        use self::TOXAV_ERR_CALL::*;
         match *self {
-            TOXAV_ERR_CALL_OK => "no error",
-            TOXAV_ERR_CALL_MALLOC => "failed to allocate memory",
-            TOXAV_ERR_CALL_SYNC => "synchronization error ocurred",
-            TOXAV_ERR_CALL_FRIEND_NOT_FOUND => "no friend with given friend number",
-            TOXAV_ERR_CALL_FRIEND_NOT_CONNECTED => "friend is not connected",
-            TOXAV_ERR_CALL_FRIEND_ALREADY_IN_CALL => "aready in call with friend",
-            TOXAV_ERR_CALL_INVALID_BIT_RATE => "invalid bit rate",
+            TOXAV_ERR_CALL_OK => "call: no error",
+            TOXAV_ERR_CALL_MALLOC => "call: failed to allocate memory",
+            TOXAV_ERR_CALL_SYNC => "call: synchronization error ocurred",
+            TOXAV_ERR_CALL_FRIEND_NOT_FOUND => "call: no friend with given friend number",
+            TOXAV_ERR_CALL_FRIEND_NOT_CONNECTED => "call: friend is not connected",
+            TOXAV_ERR_CALL_FRIEND_ALREADY_IN_CALL => "call: aready in call with friend",
+            TOXAV_ERR_CALL_INVALID_BIT_RATE => "call: invalid bit rate",
         }
     }
 }
@@ -132,16 +151,19 @@ pub enum TOXAV_ERR_ANSWER {
     TOXAV_ERR_ANSWER_INVALID_BIT_RATE,
 }
 
-use self::TOXAV_ERR_ANSWER::*;
 impl Error for TOXAV_ERR_ANSWER {
     fn description(&self) -> &str {
+        use self::TOXAV_ERR_ANSWER::*;
         match *self {
-            TOXAV_ERR_ANSWER_OK => "no error",
-            TOXAV_ERR_ANSWER_SYNC => "synchronization error ocurred",
-            TOXAV_ERR_ANSWER_CODEC_INITIALIZATION => "failed to initialize codec for session",
-            TOXAV_ERR_ANSWER_FRIEND_NOT_FROUND => "no friend with given friend number",
-            TOXAV_ERR_ANSWER_FRIEND_NOT_CALLING => "friend not calling or already in call",
-            TOXAV_ERR_ANSWER_INVALID_BIT_RATE => "invalid bit rate",
+            TOXAV_ERR_ANSWER_OK => "answer: no error",
+            TOXAV_ERR_ANSWER_SYNC => "answer: synchronization error ocurred",
+            TOXAV_ERR_ANSWER_CODEC_INITIALIZATION =>
+                "answer: failed to initialize codec for session",
+            TOXAV_ERR_ANSWER_FRIEND_NOT_FROUND =>
+                "answer: no friend with given friend number",
+            TOXAV_ERR_ANSWER_FRIEND_NOT_CALLING =>
+                "answer: friend not calling or already in call",
+            TOXAV_ERR_ANSWER_INVALID_BIT_RATE => "answer: invalid bit rate",
         }
     }
 }
@@ -246,15 +268,19 @@ pub enum TOXAV_ERR_CALL_CONTROL {
     TOXAV_ERR_CALL_CONTROL_INVALID_TRANSITION,
 }
 
-use self::TOXAV_ERR_CALL_CONTROL::*;
 impl Error for TOXAV_ERR_CALL_CONTROL {
     fn description(&self) -> &str {
+        use self::TOXAV_ERR_CALL_CONTROL::*;
         match *self {
-            TOXAV_ERR_CALL_CONTROL_OK => "no error",
-            TOXAV_ERR_CALL_CONTROL_SYNC => "synchronization error ocurred",
-            TOXAV_ERR_CALL_CONTROL_FRIEND_NOT_FOUND => "no friend with given friend number",
-            TOXAV_ERR_CALL_CONTROL_FRIEND_NOT_IN_CALL => "not in call with friend",
-            TOXAV_ERR_CALL_CONTROL_INVALID_TRANSITION => "already paused or resumed",
+            TOXAV_ERR_CALL_CONTROL_OK => "call_control: no error",
+            TOXAV_ERR_CALL_CONTROL_SYNC =>
+                "call_control: synchronization error ocurred",
+            TOXAV_ERR_CALL_CONTROL_FRIEND_NOT_FOUND =>
+                "call_control: no friend with given friend number",
+            TOXAV_ERR_CALL_CONTROL_FRIEND_NOT_IN_CALL =>
+                "call_control: not in call with friend",
+            TOXAV_ERR_CALL_CONTROL_INVALID_TRANSITION =>
+                "call_control: already paused or resumed",
         }
     }
 }
@@ -288,16 +314,20 @@ pub enum TOXAV_ERR_BIT_RATE_SET {
     TOXAV_ERR_BIT_RATE_SET_FRIEND_NOT_IN_CALL,
 }
 
-use self::TOXAV_ERR_BIT_RATE_SET::*;
 impl Error for TOXAV_ERR_BIT_RATE_SET {
     fn description(&self) -> &str {
+        use self::TOXAV_ERR_BIT_RATE_SET::*;
         match *self {
-            TOXAV_ERR_BIT_RATE_SET_OK => "no error",
-            TOXAV_ERR_BIT_RATE_SET_SYNC => "synchronization error ocurred",
-            TOXAV_ERR_BIT_RATE_SET_INVALID_AUDIO_BIT_RATE => "audio bit rate not supported",
-            TOXAV_ERR_BIT_RATE_SET_INVALID_VIDEO_BIT_RATE => "audio bit rate not supported",
-            TOXAV_ERR_BIT_RATE_SET_FRIEND_NOT_FOUND => "no friend with given friend number",
-            TOXAV_ERR_BIT_RATE_SET_FRIEND_NOT_IN_CALL => "not in call with friend",
+            TOXAV_ERR_BIT_RATE_SET_OK => "bit_rate: no error",
+            TOXAV_ERR_BIT_RATE_SET_SYNC => "bit_rate: synchronization error ocurred",
+            TOXAV_ERR_BIT_RATE_SET_INVALID_AUDIO_BIT_RATE =>
+                "bit_rate: audio bit rate not supported",
+            TOXAV_ERR_BIT_RATE_SET_INVALID_VIDEO_BIT_RATE =>
+                "bit_rate: audio bit rate not supported",
+            TOXAV_ERR_BIT_RATE_SET_FRIEND_NOT_FOUND =>
+                "bit_rate: no friend with given friend number",
+            TOXAV_ERR_BIT_RATE_SET_FRIEND_NOT_IN_CALL =>
+                "bit_rate: not in call with friend",
         }
     }
 }
@@ -337,19 +367,25 @@ pub enum TOXAV_ERR_SEND_FRAME {
     TOXAV_ERR_SEND_FRAME_RTP_FAILED,
 }
 
-use self::TOXAV_ERR_SEND_FRAME::*;
 impl Error for TOXAV_ERR_SEND_FRAME {
     fn description(&self) -> &str {
+        use self::TOXAV_ERR_SEND_FRAME::*;
         match *self {
-            TOXAV_ERR_SEND_FRAME_OK => "no error",
-            TOXAV_ERR_SEND_FRAME_NULL => "one of parameters was null", // FIXME?
-            TOXAV_ERR_SEND_FRAME_FRIEND_NOT_FOUND => "no friend with given friend number",
-            TOXAV_ERR_SEND_FRAME_FRIEND_NOT_IN_CALL => "not in call with friend",
-            TOXAV_ERR_SEND_FRAME_SYNC => "synchronization error occured",
-            TOXAV_ERR_SEND_FRAME_INVALID => "one of parameters was invalid",
+            TOXAV_ERR_SEND_FRAME_OK => "send_frame: no error",
+            TOXAV_ERR_SEND_FRAME_NULL =>
+                "send_frame: one of parameters was null", // FIXME?
+            TOXAV_ERR_SEND_FRAME_FRIEND_NOT_FOUND =>
+                "send_frame: no friend with given friend number",
+            TOXAV_ERR_SEND_FRAME_FRIEND_NOT_IN_CALL =>
+                "send_frame: not in call with friend",
+            TOXAV_ERR_SEND_FRAME_SYNC =>
+                "send_frame: synchronization error occured",
+            TOXAV_ERR_SEND_FRAME_INVALID =>
+                "send_frame: one of parameters was invalid",
             TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED =>
-                "either we or friend disabled this type of payload",
-            TOXAV_ERR_SEND_FRAME_RTP_FAILED => "failed to push frame through rtp interface",
+                "send_frame: either we or friend disabled this type of payload",
+            TOXAV_ERR_SEND_FRAME_RTP_FAILED =>
+                "send_frame: failed to push frame through rtp interface",
         }
     }
 }
