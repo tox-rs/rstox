@@ -325,6 +325,8 @@ pub enum TOXAV_ERR_SEND_FRAME {
     TOXAV_ERR_SEND_FRAME_FRIEND_NOT_FOUND,
     /// This client is currently not in a call with the friend.
     TOXAV_ERR_SEND_FRAME_FRIEND_NOT_IN_CALL,
+    /// Synchronization error occurred.
+    TOXAV_ERR_SEND_FRAME_SYNC,
     /// One of the frame parameters was invalid. E.g. the resolution may be too
     /// small or too large, or the audio sampling rate may be unsupported.
     TOXAV_ERR_SEND_FRAME_INVALID,
@@ -343,6 +345,7 @@ impl Error for TOXAV_ERR_SEND_FRAME {
             TOXAV_ERR_SEND_FRAME_NULL => "one of parameters was null", // FIXME?
             TOXAV_ERR_SEND_FRAME_FRIEND_NOT_FOUND => "no friend with given friend number",
             TOXAV_ERR_SEND_FRAME_FRIEND_NOT_IN_CALL => "not in call with friend",
+            TOXAV_ERR_SEND_FRAME_SYNC => "synchronization error occured",
             TOXAV_ERR_SEND_FRAME_INVALID => "one of parameters was invalid",
             TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED =>
                 "either we or friend disabled this type of payload",

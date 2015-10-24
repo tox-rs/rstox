@@ -22,7 +22,7 @@
 //! **This is a low-level binding to `toxav`. Shouldn't be used directly - use
 //! safe interface instead.**
 
-use libc::{c_uint, c_void};
+use libc::{c_uint, c_void, size_t};
 use super::{TOXAV_ERR_NEW, TOXAV_ERR_CALL, TOXAV_ERR_ANSWER, TOXAV_CALL_CONTROL};
 use super::{TOXAV_ERR_CALL_CONTROL, TOXAV_ERR_BIT_RATE_SET, TOXAV_ERR_SEND_FRAME};
 use core::Tox_Struct;
@@ -108,7 +108,7 @@ pub type toxav_call_state_cb =
  * bit rates at which point core suggests new bit rates.
  *
  * `friend_number` – The friend number of the friend for which to set the
- * audio bit rate.
+ * bit rate.
  *
  * `audio_bit_rate` – Suggested maximum audio bit rate in Kb/sec.
  *
@@ -363,10 +363,10 @@ extern {
     // Controlling bit rates //
     //////////////////////////
     /**
-     * Set the audio bit rate to be used in subsequent audio/video frames.
+     * Set the bit rate to be used in subsequent audio/video frames.
      *
      * `friend_number` – The friend number of the friend for which to set the
-     * audio bit rate.
+     * bit rate.
      *
      * `audio_bit_rate` – The new audio bit rate in Kb/sec. Set to 0 to disable
      * audio sending. Set to -1 to leave unchanged.
@@ -422,8 +422,7 @@ extern {
     pub fn toxav_audio_send_frame(toxav: *mut ToxAV,
                                   friend_number: u32,
                                   pcm: *const i16,
-                                  // ↓ FIXME? - in API it's size_t, no idea whether it's correct
-                                  sample_count: c_uint,
+                                  sample_count: size_t,
                                   channels: u8,
                                   sampling_rate: u32,
                                   error: *mut TOXAV_ERR_SEND_FRAME) -> bool;
