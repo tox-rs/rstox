@@ -22,14 +22,16 @@
 //! Safe interface to `toxav`.
 
 
+//use std::cell::RefCell;
 
-//use libc::{c_int, c_uint, c_void};
-//
 use std::error::Error;
 use std::{fmt, slice, mem};
-//use core::Tox;
+
+use libc::{/*c_int,*/ c_uint/*, c_void*/};
 
 
+use core::Tox;
+pub use av::ll::ToxAV;
 
 pub mod ll;
 
@@ -42,10 +44,10 @@ pub mod ll;
 /////////////////////////////
 /// Creation and destruction
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TOXAV_ERR_NEW {
     /// The function returned successfully.
-    TOXAV_ERR_NEW_OK,
+    TOXAV_ERR_NEW_OK = 0,
     /// One of the arguments to the function was NULL when it was not expected.
     TOXAV_ERR_NEW_NULL,
     /// Memory allocation failure while trying to allocate structures required
@@ -80,10 +82,10 @@ impl fmt::Display for TOXAV_ERR_NEW {
 ///////////////
 /// Call setup
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TOXAV_ERR_CALL {
     /// The function returned successfully.
-    TOXAV_ERR_CALL_OK,
+    TOXAV_ERR_CALL_OK = 0,
     /// A resource allocation error occured while trying to create the structures
     /// required for the call.
     TOXAV_ERR_CALL_MALLOC,
@@ -128,10 +130,10 @@ impl fmt::Display for TOXAV_ERR_CALL {
 ////////////////
 /// Call answer
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TOXAV_ERR_ANSWER {
     /// The function returned successfully.
-    TOXAV_ERR_ANSWER_OK,
+    TOXAV_ERR_ANSWER_OK = 0,
 
     /// Synchronization error occurred.
     TOXAV_ERR_ANSWER_SYNC,
@@ -181,7 +183,7 @@ impl fmt::Display for TOXAV_ERR_ANSWER {
 /////////////////////
 /// Call state graph
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TOXAV_FRIEND_CALL_STATE {
     /**
      * Set by the AV core if an error occurred on the remote end or if friend
@@ -215,12 +217,12 @@ pub enum TOXAV_FRIEND_CALL_STATE {
 /////////////////
 /// Call control
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TOXAV_CALL_CONTROL {
     /// Resume a previously paused call. Only valid if the pause was caused by
     /// this client, if not, this control is ignored. Not valid before the call
     /// is accepted.
-    TOXAV_CALL_CONTROL_RESUME,
+    TOXAV_CALL_CONTROL_RESUME = 0,
 
     /// Put a call on hold. Not valid before the call is accepted.
     TOXAV_CALL_CONTROL_PAUSE,
@@ -248,10 +250,10 @@ pub enum TOXAV_CALL_CONTROL {
 
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TOXAV_ERR_CALL_CONTROL {
     /// The function returned successfully.
-    TOXAV_ERR_CALL_CONTROL_OK,
+    TOXAV_ERR_CALL_CONTROL_OK = 0,
 
     /// Synchronization error occured.
     TOXAV_ERR_CALL_CONTROL_SYNC,
@@ -298,10 +300,10 @@ impl fmt::Display for TOXAV_ERR_CALL_CONTROL {
 //////////////////////////
 /// Controlling bit rates
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TOXAV_ERR_BIT_RATE_SET {
     /// The function returned successfully.
-    TOXAV_ERR_BIT_RATE_SET_OK,
+    TOXAV_ERR_BIT_RATE_SET_OK = 0,
     /// Synchronization error occurred.
     TOXAV_ERR_BIT_RATE_SET_SYNC,
     /// The audio bit rate passed was not one of the supported values.
@@ -344,10 +346,10 @@ impl fmt::Display for TOXAV_ERR_BIT_RATE_SET {
 ////////////////
 /// A/V sending
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TOXAV_ERR_SEND_FRAME {
     /// The function returned successfully.
-    TOXAV_ERR_SEND_FRAME_OK,
+    TOXAV_ERR_SEND_FRAME_OK = 0,
     /// In case of video, one of Y, U, or V was NULL. In case of audio, the
     /// samples data pointer was NULL. ← FIXME
     TOXAV_ERR_SEND_FRAME_NULL,
@@ -393,5 +395,91 @@ impl Error for TOXAV_ERR_SEND_FRAME {
 impl fmt::Display for TOXAV_ERR_SEND_FRAME {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.description())
+    }
+}
+
+
+////////////////////////
+// ToxAV API Version //
+//////////////////////
+/// Return the major version of the `toxav` library.
+pub fn av_version_major() -> u32 {
+    unsafe { ll::toxav_version_major() }
+}
+
+#[test]
+// Current major version should equal to `0`
+fn test_av_version_major() {
+    assert_eq!(av_version_major(), 0);
+}
+
+
+/// Return the minor version of the `toxav` library.
+pub fn av_version_minor() -> u32 {
+    unsafe { ll::toxav_version_major() }
+}
+
+#[test]
+// Current minor version should equal to `0`
+fn test_av_version_minor() {
+    assert_eq!(av_version_minor(), 0);
+}
+
+
+/// Return the patch version of the `toxav` library.
+pub fn av_version_patch() -> u32 {
+    unsafe { ll::toxav_version_patch() }
+}
+
+#[test]
+// Current patch version should equal to `0`
+fn test_av_version_patch() {
+    assert_eq!(av_version_patch(), 0);
+}
+
+
+/// Return whether the compiled library version is compatible with the passed
+/// version numbers. **Apparently until `toxcore` will get proper versions, it
+/// will always return `true`.**
+pub fn av_version_is_compatible(major: u32, minor: u32, patch: u32) -> bool {
+    unsafe { ll::toxav_version_is_compatible(major, minor, patch) }
+}
+
+#[test]
+// Current version numbers should be `0, 0, 0`
+fn test_av_version_is_compatible() {
+    assert_eq!(av_version_is_compatible(0, 0, 0), true);
+    // apparently until toxcore gets proper versions it's always true
+    // TODO: uncomment when it should work
+    //assert_eq!(av_version_is_compatible(1, 1, 1), false);
+    //assert_eq!(av_version_is_compatible(999999, 999999, 999999), false);
+}
+
+
+
+//////////////////////
+
+macro_rules! tox_try {
+    ($err:ident, $exp:expr) => {{
+        let mut $err = ::std::mem::uninitialized();
+        let res = $exp;
+        match $err as c_uint {
+            0 => {},
+            _ => return Err($err),
+        };
+        res
+    }};
+}
+
+
+///////////////////////////////
+// Creation and destruction //
+/////////////////////////////
+impl ToxAV {
+    pub fn new(tox: &mut Tox) -> Result<ToxAV, TOXAV_ERR_NEW> {
+        let toxav = unsafe {
+            tox_try!(err, ll::toxav_new(tox.raw, &mut err));
+        };
+        unimplemented!()
     }
 }

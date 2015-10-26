@@ -370,7 +370,7 @@ macro_rules! tox_option {
 }
 
 pub struct Tox {
-    raw: *mut ll::Tox,
+    pub raw: *mut ll::Tox,
     event_rx: Rc<RefCell<Receiver<Event>>>,
     #[allow(dead_code)]
     event_tx: Box<Sender<Event>>,

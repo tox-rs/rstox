@@ -207,20 +207,14 @@ extern {
      */
     pub fn toxav_version_major() -> u32;
 
-    /**
-     * Return the minor version number of the library.
-     */
+    /// Return the minor version number of the library.
     pub fn toxav_version_minor() -> u32;
 
-    /**
-     * Return the patch number of the library.
-     */
+    /// Return the patch number of the library.
     pub fn toxav_version_patch() -> u32;
 
-    /**
-     * Return whether the compiled library version is compatible with the passed
-     * version numbers.
-     */
+    /// Return whether the compiled library version is compatible with the passed
+    /// version numbers.
     pub fn toxav_version_is_compatible(major: u32, minor: u32, patch: u32) -> bool;
 
 
