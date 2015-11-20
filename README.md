@@ -16,7 +16,7 @@ git = "https://github.com/suhr/rstox.git"
 ```
 and make something - [example](/examples/test.rs)
 
-`toxcore` API documentation: https://libtoxcore.so
+Toxcore [API documentation](https://github.com/irungentoo/toxcore/blob/master/toxcore/tox.h)
 
 
 **rstox** is licensed under [LGPLv3](LICENSE)
