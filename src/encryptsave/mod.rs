@@ -30,21 +30,39 @@ pub fn is_encrypted(data: &[u8]) -> bool {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct ToxPassKey {
-    passkey: *mut ll::Tox_PassKey
+    passkey: ll::Tox_PassKey
 }
 
+/// # Examples
+///
+/// ```
+/// use rstox::encryptsave::ToxPassKey;
+///
+/// let passphrase = b"rstox is good";
+/// let data = b"rstox is a Rust wrapper for toxcore.";
+///
+/// let ciphertext = ToxPassKey::new(passphrase).ok().unwrap()
+///     .encrypt(data).ok().unwrap();
+/// let plaintext = ToxPassKey::from(passphrase, &ciphertext).ok().unwrap()
+///     .decrypt(&ciphertext).ok().unwrap();
+///
+/// assert_eq!(
+///     String::from_utf8_lossy(data),
+///     String::from_utf8_lossy(&plaintext)
+/// );
+/// ```
 #[allow(unused_mut)]
 impl ToxPassKey {
-    fn new(passphrase: &[u8]) -> Result<ToxPassKey, errors::KeyDerivationError>  {
+    pub fn new(passphrase: &[u8]) -> Result<ToxPassKey, errors::KeyDerivationError>  {
         let passkey = try!(tox_res!(
             passkey,
             err,
             ll::tox_derive_key_from_pass(
                 passphrase.as_ptr(),
                 passphrase.len(),
-                passkey,
+                &mut passkey,
                 &mut err
             )
         ));
@@ -52,15 +70,16 @@ impl ToxPassKey {
         Ok(ToxPassKey { passkey: passkey })
     }
 
-    fn from(passphrase: &[u8], data: &[u8]) -> Result<ToxPassKey, errors::KeyDerivationError> {
+    pub fn from(passphrase: &[u8], data: &[u8]) -> Result<ToxPassKey, errors::KeyDerivationError> {
         ToxPassKey::with(passphrase, unsafe {
-            let mut salt = Vec::new();
+            let mut salt = Vec::with_capacity(ll::PASS_SALT_LENGTH);
+            salt.set_len(ll::PASS_SALT_LENGTH);
             ll::tox_get_salt(data.as_ptr(), salt.as_mut_ptr());
             salt
         })
     }
 
-    fn with(passphrase: &[u8], salt: Vec<u8>) -> Result<ToxPassKey, errors::KeyDerivationError> {
+    pub fn with(passphrase: &[u8], salt: Vec<u8>) -> Result<ToxPassKey, errors::KeyDerivationError> {
         let passkey = try!(tox_res!(
             passkey,
             err,
@@ -68,7 +87,7 @@ impl ToxPassKey {
                 passphrase.as_ptr(),
                 passphrase.len(),
                 salt.as_ptr(),
-                passkey,
+                &mut passkey,
                 &mut err
             )
         ));
@@ -76,7 +95,7 @@ impl ToxPassKey {
         Ok(ToxPassKey { passkey: passkey })
     }
 
-    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, errors::EncryptionError> {
+    pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, errors::EncryptionError> {
         tox_res!(
             out <- {
                 let len = data.len() + PASS_ENCRYPTION_EXTRA_LENGTH;
@@ -88,14 +107,14 @@ impl ToxPassKey {
             ll::tox_pass_key_encrypt(
                 data.as_ptr(),
                 data.len(),
-                self.passkey,
+                &self.passkey,
                 out.as_mut_ptr(),
                 &mut err
             )
         )
     }
 
-    fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, errors::DecryptionError> {
+    pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, errors::DecryptionError> {
         tox_res!(
             out <- {
                 let len = data.len() - PASS_ENCRYPTION_EXTRA_LENGTH;
@@ -107,7 +126,7 @@ impl ToxPassKey {
             ll::tox_pass_key_decrypt(
                 data.as_ptr(),
                 data.len(),
-                self.passkey,
+                &self.passkey,
                 out.as_mut_ptr(),
                 &mut err
             )

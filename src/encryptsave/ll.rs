@@ -5,7 +5,7 @@ pub const PASS_SALT_LENGTH: usize = 32;
 pub const PASS_KEY_LENGTH: usize = 32;
 
 #[repr(C)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Tox_PassKey {
     salt: [u8; PASS_SALT_LENGTH],
     key: [u8; PASS_KEY_LENGTH]
