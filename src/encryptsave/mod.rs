@@ -91,9 +91,31 @@ impl ToxPassKey {
 }
 
 pub fn pass_encrypt(passphrase: &[u8], data: &[u8]) -> Result<Vec<u8>, errors::EncryptionError> {
-    unimplemented!()
+    tox_res!(
+        out <- Vec::new(),
+        err,
+        ll::tox_pass_encrypt(
+            data.as_ptr(),
+            data.len(),
+            passphrase.as_ptr(),
+            passphrase.len(),
+            out.as_mut_ptr(),
+            &mut err
+        )
+    )
 }
 
 pub fn pass_decrypt(passphrase: &[u8], data: &[u8]) -> Result<Vec<u8>, errors::DecryptionError> {
-    unimplemented!()
+    tox_res!(
+        out <- Vec::new(),
+        err,
+        ll::tox_pass_decrypt(
+            data.as_ptr(),
+            data.len(),
+            passphrase.as_ptr(),
+            passphrase.len(),
+            out.as_mut_ptr(),
+            &mut err
+        )
+    )
 }
