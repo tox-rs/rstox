@@ -6,4 +6,4 @@ extern crate libc;
 pub mod core;
 // pub mod av;
 pub mod utils;
-// pub mod encryptsave;
+pub mod encryptsave;

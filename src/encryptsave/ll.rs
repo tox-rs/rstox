@@ -17,22 +17,22 @@ extern "C" {
     pub fn tox_derive_key_from_pass(
         passphrase: *const u8,
         pplength: usize,
-        out_key: Tox_PassKey,
-        error: errors::KeyDerivationError
+        out_key: *mut Tox_PassKey,
+        error: *mut errors::KeyDerivationError
     ) -> bool;
     pub fn tox_derive_key_with_salt(
         passphrase: *const u8,
         pplength: usize,
         salt: *const u8,
-        out_key: Tox_PassKey,
-        error: errors::KeyDerivationError
+        out_key: *mut Tox_PassKey,
+        error: *mut errors::KeyDerivationError
     ) -> bool;
     pub fn tox_pass_key_encrypt(
         data: *const u8,
         data_len: usize,
         key: *const Tox_PassKey,
         out: *mut u8,
-        error: errors::EncryptionError
+        error: *mut errors::EncryptionError
     ) -> bool;
     pub fn tox_pass_encrypt(
         data: *const u8,
@@ -40,14 +40,14 @@ extern "C" {
         passphrase: *const u8,
         pplength: usize,
         out: *mut u8,
-        error: errors::EncryptionError
+        error: *mut errors::EncryptionError
     ) -> bool;
     pub fn tox_pass_key_decrypt(
         data: *const u8,
         length: usize,
         key: *const Tox_PassKey,
         out: *mut u8,
-        error: errors::DecryptionError
+        error: *mut errors::DecryptionError
     ) -> bool;
     pub fn tox_pass_decrypt(
         data: *const u8,
@@ -55,7 +55,7 @@ extern "C" {
         passphrase: *const u8,
         pplength: usize,
         out: *mut u8,
-        error: errors::DecryptionError
+        error: *mut errors::DecryptionError
     ) -> bool;
     pub fn tox_is_data_encrypted(data: *const u8) -> bool;
 }

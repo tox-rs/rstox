@@ -26,10 +26,9 @@ macro_rules! tox_res {
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct ToxPassKey {
-    passkey: ll::Tox_PassKey
+    passkey: *mut ll::Tox_PassKey
 }
 
-#[allow(unused_mut)]
 impl ToxPassKey {
     fn new(passphrase: &[u8]) -> Result<ToxPassKey, errors::KeyDerivationError>  {
         let passkey = try!(tox_res!(
@@ -39,7 +38,7 @@ impl ToxPassKey {
                 passphrase.as_ptr(),
                 passphrase.len(),
                 passkey,
-                err
+                &mut err
             )
         ));
 
@@ -55,7 +54,7 @@ impl ToxPassKey {
                 passphrase.len(),
                 salt.as_ptr(),
                 passkey,
-                err
+                &mut err
             )
         ));
 
@@ -69,9 +68,9 @@ impl ToxPassKey {
             ll::tox_pass_key_encrypt(
                 data.as_ptr(),
                 data.len(),
-                &self.passkey,
+                self.passkey,
                 out.as_mut_ptr(),
-                err
+                &mut err
             )
         )
     }
@@ -83,9 +82,9 @@ impl ToxPassKey {
             ll::tox_pass_key_decrypt(
                 data.as_ptr(),
                 data.len(),
-                &self.passkey,
+                self.passkey,
                 out.as_mut_ptr(),
-                err
+                &mut err
             )
         )
     }
