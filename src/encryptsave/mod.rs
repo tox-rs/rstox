@@ -23,12 +23,19 @@ macro_rules! tox_res {
     }
 }
 
+pub const PASS_ENCRYPTION_EXTRA_LENGTH: usize = 80;
+
+pub fn is_encrypted(data: &[u8]) -> bool {
+    unsafe { ll::tox_is_data_encrypted(data.as_ptr()) }
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct ToxPassKey {
     passkey: *mut ll::Tox_PassKey
 }
 
+#[allow(unused_mut)]
 impl ToxPassKey {
     fn new(passphrase: &[u8]) -> Result<ToxPassKey, errors::KeyDerivationError>  {
         let passkey = try!(tox_res!(
@@ -45,7 +52,15 @@ impl ToxPassKey {
         Ok(ToxPassKey { passkey: passkey })
     }
 
-    fn with(passphrase: &[u8], salt: &[u8]) -> Result<ToxPassKey, errors::KeyDerivationError> {
+    fn from(passphrase: &[u8], data: &[u8]) -> Result<ToxPassKey, errors::KeyDerivationError> {
+        ToxPassKey::with(passphrase, unsafe {
+            let mut salt = Vec::new();
+            ll::tox_get_salt(data.as_ptr(), salt.as_mut_ptr());
+            salt
+        })
+    }
+
+    fn with(passphrase: &[u8], salt: Vec<u8>) -> Result<ToxPassKey, errors::KeyDerivationError> {
         let passkey = try!(tox_res!(
             passkey,
             err,
@@ -63,7 +78,12 @@ impl ToxPassKey {
 
     fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, errors::EncryptionError> {
         tox_res!(
-            out <- Vec::new(),
+            out <- {
+                let len = data.len() + PASS_ENCRYPTION_EXTRA_LENGTH;
+                let mut out = Vec::with_capacity(len);
+                out.set_len(len);
+                out
+            },
             err,
             ll::tox_pass_key_encrypt(
                 data.as_ptr(),
@@ -77,7 +97,12 @@ impl ToxPassKey {
 
     fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, errors::DecryptionError> {
         tox_res!(
-            out <- Vec::new(),
+            out <- {
+                let len = data.len() - PASS_ENCRYPTION_EXTRA_LENGTH;
+                let mut out = Vec::with_capacity(len);
+                out.set_len(len);
+                out
+            },
             err,
             ll::tox_pass_key_decrypt(
                 data.as_ptr(),
@@ -92,7 +117,12 @@ impl ToxPassKey {
 
 pub fn pass_encrypt(passphrase: &[u8], data: &[u8]) -> Result<Vec<u8>, errors::EncryptionError> {
     tox_res!(
-        out <- Vec::new(),
+        out <- {
+            let len = data.len() + PASS_ENCRYPTION_EXTRA_LENGTH;
+            let mut out = Vec::with_capacity(len);
+            out.set_len(len);
+            out
+        },
         err,
         ll::tox_pass_encrypt(
             data.as_ptr(),
@@ -107,7 +137,12 @@ pub fn pass_encrypt(passphrase: &[u8], data: &[u8]) -> Result<Vec<u8>, errors::E
 
 pub fn pass_decrypt(passphrase: &[u8], data: &[u8]) -> Result<Vec<u8>, errors::DecryptionError> {
     tox_res!(
-        out <- Vec::new(),
+        out <- {
+            let len = data.len() - PASS_ENCRYPTION_EXTRA_LENGTH;
+            let mut out = Vec::with_capacity(len);
+            out.set_len(len);
+            out
+        },
         err,
         ll::tox_pass_decrypt(
             data.as_ptr(),

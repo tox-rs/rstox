@@ -13,7 +13,7 @@ pub struct Tox_PassKey {
 
 #[link(name = "toxencryptsave")]
 extern "C" {
-    pub fn tox_get_salt(data: *mut u8, salt: *mut u8) -> bool;
+    pub fn tox_get_salt(data: *const u8, salt: *mut u8) -> bool;
     pub fn tox_derive_key_from_pass(
         passphrase: *const u8,
         pplength: usize,
