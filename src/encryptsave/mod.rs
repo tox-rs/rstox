@@ -2,29 +2,32 @@ mod ll;
 pub mod errors;
 
 
+/// if $fun is true return Ok($res), or else Err($err).
+/// return Result<$res, $err>.
 macro_rules! tox_res {
-    ( $res:ident <- $rexpr:expr, $err:ident, $r:expr ) => {
+    ( $res:ident <- $rexpr:expr, $err:ident, $fun:expr ) => {
         unsafe {
             let mut $res = $rexpr;
             let mut $err = ::std::mem::uninitialized();
-            if $r {
+            if $fun {
                 Ok($res)
             } else {
                 Err($err)
             }
         }
     };
-    ( $res:ident, $err:ident, $r:expr ) => {
+    ( $res:ident, $err:ident, $fun:expr ) => {
         tox_res!(
             $res <- ::std::mem::uninitialized(),
             $err,
-            $r
+            $fun
         )
     }
 }
 
 pub const PASS_ENCRYPTION_EXTRA_LENGTH: usize = 80;
 
+/// Determine whether the data has been encrypted.
 pub fn is_encrypted(data: &[u8]) -> bool {
     unsafe { ll::tox_is_data_encrypted(data.as_ptr()) }
 }
@@ -35,6 +38,8 @@ pub struct ToxPassKey {
     passkey: ll::Tox_PassKey
 }
 
+/// ToxPassKey, Symmetric encryption local files.
+///
 /// # Examples
 ///
 /// ```
@@ -55,6 +60,7 @@ pub struct ToxPassKey {
 /// ```
 #[allow(unused_mut)]
 impl ToxPassKey {
+    /// Generate ToxPassKey, using a random salt.
     pub fn new(passphrase: &[u8]) -> Result<ToxPassKey, errors::KeyDerivationError>  {
         let passkey = try!(tox_res!(
             passkey,
@@ -70,6 +76,7 @@ impl ToxPassKey {
         Ok(ToxPassKey { passkey: passkey })
     }
 
+    /// Generate Tox PassKey, read salt from the data.
     pub fn from(passphrase: &[u8], data: &[u8]) -> Result<ToxPassKey, errors::KeyDerivationError> {
         ToxPassKey::with(passphrase, unsafe {
             let mut salt = Vec::with_capacity(ll::PASS_SALT_LENGTH);
@@ -79,6 +86,7 @@ impl ToxPassKey {
         })
     }
 
+    /// Generate ToxPassKey, using the specified salt.
     pub fn with(passphrase: &[u8], salt: Vec<u8>) -> Result<ToxPassKey, errors::KeyDerivationError> {
         let passkey = try!(tox_res!(
             passkey,
@@ -95,6 +103,7 @@ impl ToxPassKey {
         Ok(ToxPassKey { passkey: passkey })
     }
 
+    /// encryption
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, errors::EncryptionError> {
         tox_res!(
             out <- {
@@ -114,6 +123,7 @@ impl ToxPassKey {
         )
     }
 
+    /// decryption
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, errors::DecryptionError> {
         tox_res!(
             out <- {
@@ -134,6 +144,7 @@ impl ToxPassKey {
     }
 }
 
+/// use passphrase encryption
 pub fn pass_encrypt(passphrase: &[u8], data: &[u8]) -> Result<Vec<u8>, errors::EncryptionError> {
     tox_res!(
         out <- {
@@ -154,6 +165,7 @@ pub fn pass_encrypt(passphrase: &[u8], data: &[u8]) -> Result<Vec<u8>, errors::E
     )
 }
 
+/// use passphrase decryption
 pub fn pass_decrypt(passphrase: &[u8], data: &[u8]) -> Result<Vec<u8>, errors::DecryptionError> {
     tox_res!(
         out <- {
