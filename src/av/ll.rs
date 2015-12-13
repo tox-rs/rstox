@@ -19,12 +19,13 @@
     along with rstox.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//! **This is a low-level binding to `toxav`. Shouldn't be used directly - use
-//! safe interface instead.**
+//! This is a low-level binding to `toxav`. Shouldn't be used directly - use
+//! safe interface instead.
 
 use libc::{c_uint, c_void, size_t};
-use super::{TOXAV_ERR_NEW, TOXAV_ERR_CALL, TOXAV_ERR_ANSWER, TOXAV_CALL_CONTROL};
-use super::{TOXAV_ERR_CALL_CONTROL, TOXAV_ERR_BIT_RATE_SET, TOXAV_ERR_SEND_FRAME};
+use super::{TOXAV_CALL_CONTROL};
+use super::errors::{TOXAV_ERR_NEW, TOXAV_ERR_CALL, TOXAV_ERR_ANSWER};
+use super::errors::{TOXAV_ERR_CALL_CONTROL, TOXAV_ERR_BIT_RATE_SET, TOXAV_ERR_SEND_FRAME};
 use core::Tox_Struct;
 
 pub type Tox = Tox_Struct;
@@ -43,15 +44,6 @@ pub type Tox = Tox_Struct;
  * without notifying peers.**
  */
 pub enum ToxAV {}
-
-
-
-
-//////////////////////
-/////////////////////
-// Callback types //
-///////////////////
-//////////////////
 
 
 /////////////////
@@ -225,7 +217,7 @@ extern {
      * Start new A/V session. There can only be one session per
      * [`Tox`](../../core/struct.Tox.html) instance.
      */
-    pub fn toxav_new(tox: *mut Tox, error: *mut TOXAV_ERR_NEW) -> ToxAV;
+    pub fn toxav_new(tox: *mut Tox, error: *mut TOXAV_ERR_NEW) -> *mut ToxAV;
 
     /**
      * Releases all resources associated with the A/V session.
@@ -246,7 +238,7 @@ extern {
      * Returns the [`Tox`](../../core/struct.Tox.html) instance for which
      * the A/V object was created for.
      */
-    pub fn toxav_get_tox(toxav: *const ToxAV) -> Tox;
+    pub fn toxav_get_tox(toxav: *const ToxAV) -> *mut Tox;
 
     /**
      * Returns the interval in milliseconds when the next
