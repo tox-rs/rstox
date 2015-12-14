@@ -25,9 +25,11 @@
 //use std::cell::RefCell;
 
 
-use libc::{/*c_int,*/ c_uint/*, c_void*/};
+use libc::{/*c_int,*/ c_uint, c_void};
+use std::mem;
+use std::sync::mpsc::Sender;
 
-use core::Tox;
+use core::{Tox, Event};
 
 pub mod ll;
 pub mod errors;
@@ -149,9 +151,18 @@ pub struct ToxAv {
 
 impl ToxAv {
     pub fn new(tox: &mut Tox) -> Result<ToxAv, errors::TOXAV_ERR_NEW> {
-        Ok(ToxAv {
+        let mut toxav = ToxAv {
             av: unsafe { tox_try!(err, ll::toxav_new(tox.raw, &mut err)) }
-        })
+        };
+        toxav.init(tox);
+        Ok(toxav)
+    }
+
+    fn init(&mut self, tox: &mut Tox) {
+        unsafe {
+            let chan: *mut c_void = mem::transmute(&mut *tox.event_tx);
+            ll::toxav_callback_call(self.av, on_call, chan);
+        }
     }
 
     pub fn interval(&self) -> u32 {
@@ -232,5 +243,18 @@ impl ToxAv {
 impl Drop for ToxAv {
     fn drop(&mut self) {
         unsafe { ll::toxav_kill(self.av); }
+    }
+}
+
+extern fn on_call(
+    toxav: *mut ll::ToxAV,
+    friend_number: u32,
+    audio_enabled: bool,
+    video_enabled: bool,
+    chan: *mut c_void
+) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        tx.send(Event::Call(friend_number, audio_enabled, video_enabled)).ok();
     }
 }

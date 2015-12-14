@@ -232,6 +232,9 @@ pub enum Event {
     GroupTitle(i32, i32, String),
     /// `(gnum, pnum, ChatChange)`
     GroupNamelistChange(i32, i32, ChatChange),
+
+    /// ToxAV Event
+    Call(u32, bool, bool)
 }
 
 #[repr(C)]
@@ -373,7 +376,7 @@ pub struct Tox {
     pub raw: *mut ll::Tox,
     event_rx: Rc<RefCell<Receiver<Event>>>,
     #[allow(dead_code)]
-    event_tx: Box<Sender<Event>>,
+    pub event_tx: Box<Sender<Event>>,
 }
 
 impl Drop for Tox {
