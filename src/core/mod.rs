@@ -234,7 +234,11 @@ pub enum Event {
     GroupNamelistChange(i32, i32, ChatChange),
 
     /// ToxAV Event
-    Call(u32, bool, bool)
+    Call(u32, bool, bool),
+    CallState(u32, u32),
+    BitRateStatus(u32, u32, u32),
+    AudioReceiveFrame(u32, i16, u32, u8, u32),
+    VideoReceiveFrame(u32, u16, u16, u8, u8, u8, i32, i32, i32),
 }
 
 #[repr(C)]

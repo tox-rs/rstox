@@ -22,7 +22,7 @@
 //! This is a low-level binding to `toxav`. Shouldn't be used directly - use
 //! safe interface instead.
 
-use libc::{c_uint, c_void, size_t};
+use libc::{c_void, size_t};
 use super::{TOXAV_CALL_CONTROL};
 use super::errors::{TOXAV_ERR_NEW, TOXAV_ERR_CALL, TOXAV_ERR_ANSWER};
 use super::errors::{TOXAV_ERR_CALL_CONTROL, TOXAV_ERR_BIT_RATE_SET, TOXAV_ERR_SEND_FRAME};
@@ -140,8 +140,8 @@ pub type toxav_bit_rate_status_cb =
 pub type toxav_audio_receive_frame_cb =
     extern "C" fn(toxav: *mut ToxAV,
                   friend_number: u32,
-                  pcm: *mut i16,
-                  sample_count: c_uint,
+                  pcm: *const i16,
+                  sample_count: u32,
                   channels: u8,
                   sampling_rate: u32,
                   user_data: *mut c_void) -> ();

@@ -162,6 +162,10 @@ impl ToxAv {
         unsafe {
             let chan: *mut c_void = mem::transmute(&mut *tox.event_tx);
             ll::toxav_callback_call(self.av, on_call, chan);
+            ll::toxav_callback_call_state(self.av, on_call_state, chan);
+            ll::toxav_callback_bit_rate_status(self.av, on_bit_rate_status, chan);
+            ll::toxav_callback_audio_receive_frame(self.av, on_audio_receive_frame, chan);
+            ll::toxav_callback_video_receive_frame(self.av, on_video_receive_frame, chan);
         }
     }
 
@@ -256,5 +260,64 @@ extern fn on_call(
     unsafe {
         let tx: &mut Sender<Event> = mem::transmute(chan);
         tx.send(Event::Call(friend_number, audio_enabled, video_enabled)).ok();
+    }
+}
+
+extern fn on_call_state(
+    toxav: *mut ll::ToxAV,
+    friend_number: u32,
+    state: u32,
+    chan: *mut c_void
+) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        tx.send(Event::CallState(friend_number, state)).ok();
+    }
+}
+
+extern fn on_bit_rate_status(
+    toxav: *mut ll::ToxAV,
+    friend_number: u32,
+    audio_bitrate: u32,
+    video_bitrate: u32,
+    chan: *mut c_void
+) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        tx.send(Event::BitRateStatus(friend_number, audio_bitrate, video_bitrate)).ok();
+    }
+}
+
+extern fn on_audio_receive_frame(
+    toxav: *mut ll::ToxAV,
+    friend_number: u32,
+    pcm: *const i16,
+    sample_count: u32,
+    channels: u8,
+    sampling_rate: u32,
+    chan: *mut c_void
+) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        tx.send(Event::AudioReceiveFrame(friend_number, *pcm, sample_count, channels, sampling_rate)).ok();
+    }
+}
+
+extern fn on_video_receive_frame(
+    toxav: *mut ll::ToxAV,
+    friend_number: u32,
+    width: u16,
+    height: u16,
+    y: *const u8,
+    u: *const u8,
+    v: *const u8,
+    ystride: i32,
+    ustride: i32,
+    vstride: i32,
+    chan: *mut c_void
+) {
+    unsafe {
+        let tx: &mut Sender<Event> = mem::transmute(chan);
+        tx.send(Event::VideoReceiveFrame(friend_number, width, height, *y, *u, *v, ystride, ustride, vstride)).ok();
     }
 }
