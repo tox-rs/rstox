@@ -26,7 +26,8 @@
 
 
 use libc::{/*c_int,*/ c_uint, c_void};
-use std::thread;
+use std::thread::sleep;
+use std::slice;
 use std::time::Duration;
 use std::mem;
 use std::sync::mpsc::Sender;
@@ -178,7 +179,7 @@ impl ToxAv {
     pub fn wait(&self) {
         unsafe {
             let delay = ll::toxav_iteration_interval(self.av);
-           thread:: sleep(Duration::new(0, delay));
+            sleep(Duration::new(0, delay));
         }
     }
 
@@ -255,7 +256,7 @@ impl ToxAv {
     pub fn send_audio(
         &mut self,
         friend_number: u32,
-        pcm: i16,
+        pcm: &[i16],
         sample_count: usize,
         channels: u8,
         sampling_rate: u32
@@ -264,7 +265,7 @@ impl ToxAv {
             tox_try!(err, ll::toxav_audio_send_frame(
                 self.av,
                 friend_number,
-                &pcm,
+                pcm.as_ptr(),
                 sample_count,
                 channels,
                 sampling_rate,
@@ -278,7 +279,7 @@ impl ToxAv {
         friend_number: u32,
         width: u16,
         height: u16,
-        y: u8, u: u8, v: u8
+        y: &[u8], u: &[u8], v: &[u8]
     ) -> Result<bool, errors::TOXAV_ERR_SEND_FRAME> {
         Ok(unsafe {
             tox_try!(err, ll::toxav_video_send_frame(
@@ -286,7 +287,7 @@ impl ToxAv {
                 friend_number,
                 width,
                 height,
-                &y, &u, &v,
+                y.as_ptr(), u.as_ptr(), v.as_ptr(),
                 &mut err
             ))
         })
@@ -348,7 +349,8 @@ extern fn on_audio_receive_frame(
 ) {
     unsafe {
         let tx: &mut Sender<Event> = mem::transmute(chan);
-        tx.send(Event::AudioReceiveFrame(friend_number, *pcm, sample_count, channels, sampling_rate)).ok();
+        let pcm = slice::from_raw_parts(pcm, sample_count* channels as usize * 2);
+        tx.send(Event::AudioReceiveFrame(friend_number, pcm.to_vec(), sample_count, channels, sampling_rate)).ok();
     }
 }
 

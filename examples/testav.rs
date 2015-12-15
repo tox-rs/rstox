@@ -38,7 +38,7 @@ fn main() {
                     toxav.answer(fnum, 48, 64).ok();
                 },
                 Event::AudioReceiveFrame(fnum, pcm, count, chan, rate) => {
-                    toxav.send_audio(fnum, pcm, count, chan, rate).ok();
+                    toxav.send_audio(fnum, &pcm, count, chan, rate).ok();
                 },
                 _ => ()
             };

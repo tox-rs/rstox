@@ -239,7 +239,7 @@ pub enum Event {
     Call(u32, bool, bool),
     CallState(u32, u32),
     BitRateStatus(u32, u32, u32),
-    AudioReceiveFrame(u32, i16, usize, u8, u32),
+    AudioReceiveFrame(u32, Vec<i16>, usize, u8, u32),
     VideoReceiveFrame(u32, u16, u16, u8, u8, u8, i32, i32, i32),
 }
 
