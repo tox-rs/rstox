@@ -402,7 +402,6 @@ extern fn on_video_receive_frame(
 ) {
     unsafe {
         let tx: &mut Sender<Event> = mem::transmute(chan);
-        // FIXME noise
         let y = slice::from_raw_parts(y, max(width as i32, ystride.abs()) as usize * height as usize);
         let u = slice::from_raw_parts(u, max((width / 2) as i32, ustride.abs()) as usize * (height / 2) as usize);
         let v = slice::from_raw_parts(v, max((width / 2) as i32, vstride.abs()) as usize * (height / 2) as usize);
