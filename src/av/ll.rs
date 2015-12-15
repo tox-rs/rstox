@@ -23,9 +23,8 @@
 //! safe interface instead.
 
 use libc::c_void;
-use super::{TOXAV_CALL_CONTROL};
-use super::errors::{TOXAV_ERR_NEW, TOXAV_ERR_CALL, TOXAV_ERR_ANSWER};
-use super::errors::{TOXAV_ERR_CALL_CONTROL, TOXAV_ERR_BIT_RATE_SET, TOXAV_ERR_SEND_FRAME};
+use super::CallControl;
+use super::errors;
 use core::Tox_Struct;
 
 pub type Tox = Tox_Struct;
@@ -217,7 +216,7 @@ extern {
      * Start new A/V session. There can only be one session per
      * [`Tox`](../../core/struct.Tox.html) instance.
      */
-    pub fn toxav_new(tox: *mut Tox, error: *mut TOXAV_ERR_NEW) -> *mut ToxAV;
+    pub fn toxav_new(tox: *mut Tox, error: *mut errors::NewError) -> *mut ToxAV;
 
     /**
      * Releases all resources associated with the A/V session.
@@ -285,7 +284,7 @@ extern {
                       friend_number: u32,
                       audio_bit_rate: u32,
                       video_bit_rate: u32,
-                      error: *mut TOXAV_ERR_CALL) -> bool;
+                      error: *mut errors::CallError) -> bool;
 
 
     /// Set the callback for the [`call`](type.toxav_call_cb.html) event.
@@ -314,7 +313,7 @@ extern {
                         friend_number: u32,
                         audio_bit_rate: u32,
                         video_bit_rate: u32,
-                        error: *mut TOXAV_ERR_ANSWER) -> bool;
+                        error: *mut errors::AnswerError) -> bool;
 
 
     ///////////////////////
@@ -341,8 +340,8 @@ extern {
      */
     pub fn toxav_call_control(toxav: *mut ToxAV,
                               friend_number: u32,
-                              control: TOXAV_CALL_CONTROL,
-                              error: *mut TOXAV_ERR_CALL_CONTROL) -> bool;
+                              control: CallControl,
+                              error: *mut errors::CallControlError) -> bool;
 
 
     ////////////////////////////
@@ -365,7 +364,7 @@ extern {
                               friend_number: u32,
                               audio_bit_rate: i32,
                               video_bit_rate: i32,
-                              error: *mut TOXAV_ERR_BIT_RATE_SET) -> bool;
+                              error: *mut errors::BitRateSetError) -> bool;
 
     /// Set the callback for the
     /// [`bit_rate_status`](type.toxav_bit_rate_status_cb.html) event.
@@ -411,7 +410,7 @@ extern {
                                   sample_count: usize,
                                   channels: u8,
                                   sampling_rate: u32,
-                                  error: *mut TOXAV_ERR_SEND_FRAME) -> bool;
+                                  error: *mut errors::SendFrameError) -> bool;
 
     /**
      * Send a video frame to a friend.
@@ -442,7 +441,7 @@ extern {
                                   y: *const u8,
                                   u: *const u8,
                                   v: *const u8,
-                                  error: *mut TOXAV_ERR_SEND_FRAME) -> bool;
+                                  error: *mut errors::SendFrameError) -> bool;
 
 
     ////////////////////

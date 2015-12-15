@@ -7,32 +7,31 @@ use std::fmt;
 /// Creation and destruction
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum TOXAV_ERR_NEW {
+pub enum NewError {
     /// The function returned successfully.
-    TOXAV_ERR_NEW_OK = 0,
+    #[doc(hidden)] NoError = 0,
     /// One of the arguments to the function was NULL when it was not expected.
-    TOXAV_ERR_NEW_NULL,
+    NullError = 1,
     /// Memory allocation failure while trying to allocate structures required
     /// for the A/V session.
-    TOXAV_ERR_NEW_MALLOC,
+    MallocError,
     /// Attempted to create a second session for the same Tox instance.
-    TOXAV_ERR_NEW_MULTIPLE,
+    Multiple,
 }
 
-impl Error for TOXAV_ERR_NEW {
+impl Error for NewError {
     fn description(&self) -> &str {
-        use self::TOXAV_ERR_NEW::*;
         match *self {
-            TOXAV_ERR_NEW_OK => "new: no error",
-            TOXAV_ERR_NEW_NULL => "new: null",
-            TOXAV_ERR_NEW_MALLOC => "new: failed to allocate memory",
-            TOXAV_ERR_NEW_MULTIPLE =>
+            NewError::NoError => "new: no error",
+            NewError::NullError => "new: null",
+            NewError::MallocError => "new: failed to allocate memory",
+            NewError::Multiple =>
                 "new: attempted to create a second session for same Tox instance",
         }
     }
 }
 
-impl fmt::Display for TOXAV_ERR_NEW {
+impl fmt::Display for NewError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.description())
     }
@@ -45,41 +44,40 @@ impl fmt::Display for TOXAV_ERR_NEW {
 /// Call setup
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum TOXAV_ERR_CALL {
+pub enum CallError {
     /// The function returned successfully.
-    TOXAV_ERR_CALL_OK = 0,
+    #[doc(hidden)] NoError = 0,
     /// A resource allocation error occured while trying to create the structures
     /// required for the call.
-    TOXAV_ERR_CALL_MALLOC,
+    MallocError,
     /// Synchronization error occured.
-    TOXAV_ERR_CALL_SYNC,
+    SyncError,
     /// The friend number did not designate a valid friend.
-    TOXAV_ERR_CALL_FRIEND_NOT_FOUND,
+    FriendNotFound,
     /// The friend was valid, but not currently connected.
-    TOXAV_ERR_CALL_FRIEND_NOT_CONNECTED,
+    FriendNotConnected,
     /// Attempted to call a friend while already in an audio or video call with
     /// them.
-    TOXAV_ERR_CALL_FRIEND_ALREADY_IN_CALL,
+    FriendAlreadyInCall,
     /// Audio or video bit rate is invalid.
-    TOXAV_ERR_CALL_INVALID_BIT_RATE,
+    InvalidBitRate
 }
 
-impl Error for TOXAV_ERR_CALL {
+impl Error for CallError {
     fn description(&self) -> &str {
-        use self::TOXAV_ERR_CALL::*;
         match *self {
-            TOXAV_ERR_CALL_OK => "call: no error",
-            TOXAV_ERR_CALL_MALLOC => "call: failed to allocate memory",
-            TOXAV_ERR_CALL_SYNC => "call: synchronization error ocurred",
-            TOXAV_ERR_CALL_FRIEND_NOT_FOUND => "call: no friend with given friend number",
-            TOXAV_ERR_CALL_FRIEND_NOT_CONNECTED => "call: friend is not connected",
-            TOXAV_ERR_CALL_FRIEND_ALREADY_IN_CALL => "call: aready in call with friend",
-            TOXAV_ERR_CALL_INVALID_BIT_RATE => "call: invalid bit rate",
+            CallError::NoError => "call: no error",
+            CallError::MallocError => "call: failed to allocate memory",
+            CallError::SyncError => "call: synchronization error ocurred",
+            CallError::FriendNotFound => "call: no friend with given friend number",
+            CallError::FriendNotConnected => "call: friend is not connected",
+            CallError::FriendAlreadyInCall => "call: aready in call with friend",
+            CallError::InvalidBitRate => "call: invalid bit rate",
         }
     }
 }
 
-impl fmt::Display for TOXAV_ERR_CALL {
+impl fmt::Display for CallError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.description())
     }
@@ -93,84 +91,48 @@ impl fmt::Display for TOXAV_ERR_CALL {
 /// Call answer
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum TOXAV_ERR_ANSWER {
+pub enum AnswerError {
     /// The function returned successfully.
-    TOXAV_ERR_ANSWER_OK = 0,
+    #[doc(hidden)] NoError = 0,
 
     /// Synchronization error occurred.
-    TOXAV_ERR_ANSWER_SYNC,
+    SyncError,
     /**
      * Failed to initialize codecs for call session. Note that codec initiation
      * will fail if there is no receive callback registered for either audio or
      * video.
      */
-    TOXAV_ERR_ANSWER_CODEC_INITIALIZATION,
+    CodecInitializationError,
     /// The friend number did not designate valid friend.
-    TOXAV_ERR_ANSWER_FRIEND_NOT_FROUND,
+    FriendNotFound,
     /// The friend was valid, but they are not currently trying to initiate
     /// a call. This is also returned if this client is already in a call with
     /// the friend.
-    TOXAV_ERR_ANSWER_FRIEND_NOT_CALLING,
+    FriendNotCalling,
     /// Audio or video bit rate is invalid.
-    TOXAV_ERR_ANSWER_INVALID_BIT_RATE,
+    InvalidBitRate
 }
 
-impl Error for TOXAV_ERR_ANSWER {
+impl Error for AnswerError {
     fn description(&self) -> &str {
-        use self::TOXAV_ERR_ANSWER::*;
         match *self {
-            TOXAV_ERR_ANSWER_OK => "answer: no error",
-            TOXAV_ERR_ANSWER_SYNC => "answer: synchronization error ocurred",
-            TOXAV_ERR_ANSWER_CODEC_INITIALIZATION =>
+            AnswerError::NoError => "answer: no error",
+            AnswerError::SyncError => "answer: synchronization error ocurred",
+            AnswerError::CodecInitializationError =>
                 "answer: failed to initialize codec for session",
-            TOXAV_ERR_ANSWER_FRIEND_NOT_FROUND =>
+            AnswerError::FriendNotFound =>
                 "answer: no friend with given friend number",
-            TOXAV_ERR_ANSWER_FRIEND_NOT_CALLING =>
+            AnswerError::FriendNotCalling =>
                 "answer: friend not calling or already in call",
-            TOXAV_ERR_ANSWER_INVALID_BIT_RATE => "answer: invalid bit rate",
+            AnswerError::InvalidBitRate => "answer: invalid bit rate",
         }
     }
 }
 
-impl fmt::Display for TOXAV_ERR_ANSWER {
+impl fmt::Display for AnswerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.description())
     }
-}
-
-
-
-///////////////////////
-// Call state graph //
-/////////////////////
-/// Call state graph
-#[repr(C)]
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum TOXAV_FRIEND_CALL_STATE {
-    /**
-     * Set by the AV core if an error occurred on the remote end or if friend
-     * timed out. This is the final state after which no more state
-     * transitions can occur for the call. This call state will never be
-     * triggered in combination with other call states.
-     */
-    TOXAV_FRIEND_CALL_STATE_ERROR = 1,
-
-    /// The call has finished. This is the final state after which no more state
-    /// transitions can occur for the call. This call state will never be
-    /// triggered in combination with other call states.
-    TOXAV_FRIEND_CALL_STATE_FINISHED = 2,
-
-    /// The flag that marks that friend is sending audio.
-    TOXAV_FRIEND_CALL_STATE_SENDING_A = 4,
-
-    /// The flag that marks that friend is sending video.
-    TOXAV_FRIEND_CALL_STATE_SENDING_V = 8,
-
-    /// The flag that marks that friend is receiving audio.
-    TOXAV_FRIEND_CALL_STATE_ACCEPTING_A = 16,
-
-    /// The flag that marks that friend is receiving video.
-    TOXAV_FRIEND_CALL_STATE_ACCEPTING_V = 32,
 }
 
 
@@ -179,43 +141,42 @@ pub enum TOXAV_FRIEND_CALL_STATE {
 /////////////////
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum TOXAV_ERR_CALL_CONTROL {
+pub enum CallControlError {
     /// The function returned successfully.
-    TOXAV_ERR_CALL_CONTROL_OK = 0,
+    #[doc(hidden)] NoError = 0,
 
     /// Synchronization error occured.
-    TOXAV_ERR_CALL_CONTROL_SYNC,
+    SyncError,
 
     /// The friend_number passed did not designate a valid friend.
-    TOXAV_ERR_CALL_CONTROL_FRIEND_NOT_FOUND,
+    FriendNotFound,
 
     /// This client is currently not in a call with the friend. Before the call
     /// is answered, only CANCEL is a valid control.
-    TOXAV_ERR_CALL_CONTROL_FRIEND_NOT_IN_CALL,
+    FriendNotInCall,
 
     /// Happnes if user tried to pause an already paused call or if trying to
     /// resume a call that is not paused.
-    TOXAV_ERR_CALL_CONTROL_INVALID_TRANSITION,
+    InvalidTransition
 }
 
-impl Error for TOXAV_ERR_CALL_CONTROL {
+impl Error for CallControlError {
     fn description(&self) -> &str {
-        use self::TOXAV_ERR_CALL_CONTROL::*;
         match *self {
-            TOXAV_ERR_CALL_CONTROL_OK => "call_control: no error",
-            TOXAV_ERR_CALL_CONTROL_SYNC =>
+            CallControlError::NoError => "call_control: no error",
+            CallControlError::SyncError =>
                 "call_control: synchronization error ocurred",
-            TOXAV_ERR_CALL_CONTROL_FRIEND_NOT_FOUND =>
+            CallControlError::FriendNotFound =>
                 "call_control: no friend with given friend number",
-            TOXAV_ERR_CALL_CONTROL_FRIEND_NOT_IN_CALL =>
+            CallControlError::FriendNotInCall =>
                 "call_control: not in call with friend",
-            TOXAV_ERR_CALL_CONTROL_INVALID_TRANSITION =>
+            CallControlError::InvalidTransition =>
                 "call_control: already paused or resumed",
         }
     }
 }
 
-impl fmt::Display for TOXAV_ERR_CALL_CONTROL {
+impl fmt::Display for CallControlError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.description())
     }
@@ -229,40 +190,39 @@ impl fmt::Display for TOXAV_ERR_CALL_CONTROL {
 /// Controlling bit rates
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum TOXAV_ERR_BIT_RATE_SET {
+pub enum BitRateSetError {
     /// The function returned successfully.
-    TOXAV_ERR_BIT_RATE_SET_OK = 0,
+    #[doc(hidden)] NoError = 0,
     /// Synchronization error occurred.
-    TOXAV_ERR_BIT_RATE_SET_SYNC,
+    SyncError,
     /// The audio bit rate passed was not one of the supported values.
-    TOXAV_ERR_BIT_RATE_SET_INVALID_AUDIO_BIT_RATE,
+    InvalidAudioBitRate,
     /// The video bit rate passed was not one of the supported values.
-    TOXAV_ERR_BIT_RATE_SET_INVALID_VIDEO_BIT_RATE,
+    InvalidVideoBitRate,
     /// The `friend_number` passed did not designate a valid friend.
-    TOXAV_ERR_BIT_RATE_SET_FRIEND_NOT_FOUND,
+    FriendNotFound,
     /// This client is currently not in a call with the friend.
-    TOXAV_ERR_BIT_RATE_SET_FRIEND_NOT_IN_CALL,
+    FriendNotInCall
 }
 
-impl Error for TOXAV_ERR_BIT_RATE_SET {
+impl Error for BitRateSetError {
     fn description(&self) -> &str {
-        use self::TOXAV_ERR_BIT_RATE_SET::*;
         match *self {
-            TOXAV_ERR_BIT_RATE_SET_OK => "bit_rate: no error",
-            TOXAV_ERR_BIT_RATE_SET_SYNC => "bit_rate: synchronization error ocurred",
-            TOXAV_ERR_BIT_RATE_SET_INVALID_AUDIO_BIT_RATE =>
+            BitRateSetError::NoError => "bit_rate: no error",
+            BitRateSetError::SyncError => "bit_rate: synchronization error ocurred",
+            BitRateSetError::InvalidAudioBitRate =>
                 "bit_rate: audio bit rate not supported",
-            TOXAV_ERR_BIT_RATE_SET_INVALID_VIDEO_BIT_RATE =>
-                "bit_rate: audio bit rate not supported",
-            TOXAV_ERR_BIT_RATE_SET_FRIEND_NOT_FOUND =>
+            BitRateSetError::InvalidVideoBitRate =>
+                "bit_rate: video bit rate not supported",
+            BitRateSetError::FriendNotFound =>
                 "bit_rate: no friend with given friend number",
-            TOXAV_ERR_BIT_RATE_SET_FRIEND_NOT_IN_CALL =>
+            BitRateSetError::FriendNotInCall =>
                 "bit_rate: not in call with friend",
         }
     }
 }
 
-impl fmt::Display for TOXAV_ERR_BIT_RATE_SET {
+impl fmt::Display for BitRateSetError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.description())
     }
@@ -275,52 +235,51 @@ impl fmt::Display for TOXAV_ERR_BIT_RATE_SET {
 /// A/V sending
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum TOXAV_ERR_SEND_FRAME {
+pub enum SendFrameError {
     /// The function returned successfully.
-    TOXAV_ERR_SEND_FRAME_OK = 0,
+    #[doc(hidden)] NoError = 0,
     /// In case of video, one of Y, U, or V was NULL. In case of audio, the
     /// samples data pointer was NULL. ← FIXME
-    TOXAV_ERR_SEND_FRAME_NULL,
+    NullError = 1,
     /// The `friend_number` passed did not sedignate a valid friend.
-    TOXAV_ERR_SEND_FRAME_FRIEND_NOT_FOUND,
+    FriendNotFound,
     /// This client is currently not in a call with the friend.
-    TOXAV_ERR_SEND_FRAME_FRIEND_NOT_IN_CALL,
+    FriendNotInCall,
     /// Synchronization error occurred.
-    TOXAV_ERR_SEND_FRAME_SYNC,
+    SyncError,
     /// One of the frame parameters was invalid. E.g. the resolution may be too
     /// small or too large, or the audio sampling rate may be unsupported.
-    TOXAV_ERR_SEND_FRAME_INVALID,
+    Invalid,
     /// Either friend turned off audio or video receiving or we turned off
     /// sending for the said payload.
-    TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED,
+    PayloadTypeDisabled,
     /// Failed to push frame through rtp interface.
-    TOXAV_ERR_SEND_FRAME_RTP_FAILED,
+    RtpFailed
 }
 
-impl Error for TOXAV_ERR_SEND_FRAME {
+impl Error for SendFrameError {
     fn description(&self) -> &str {
-        use self::TOXAV_ERR_SEND_FRAME::*;
         match *self {
-            TOXAV_ERR_SEND_FRAME_OK => "send_frame: no error",
-            TOXAV_ERR_SEND_FRAME_NULL =>
+            SendFrameError::NoError => "send_frame: no error",
+            SendFrameError::NullError =>
                 "send_frame: one of parameters was null", // FIXME?
-            TOXAV_ERR_SEND_FRAME_FRIEND_NOT_FOUND =>
+            SendFrameError::FriendNotFound =>
                 "send_frame: no friend with given friend number",
-            TOXAV_ERR_SEND_FRAME_FRIEND_NOT_IN_CALL =>
+            SendFrameError::FriendNotInCall =>
                 "send_frame: not in call with friend",
-            TOXAV_ERR_SEND_FRAME_SYNC =>
+            SendFrameError::SyncError =>
                 "send_frame: synchronization error occured",
-            TOXAV_ERR_SEND_FRAME_INVALID =>
+            SendFrameError::Invalid =>
                 "send_frame: one of parameters was invalid",
-            TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED =>
+            SendFrameError::PayloadTypeDisabled =>
                 "send_frame: either we or friend disabled this type of payload",
-            TOXAV_ERR_SEND_FRAME_RTP_FAILED =>
+            SendFrameError::RtpFailed =>
                 "send_frame: failed to push frame through rtp interface",
         }
     }
 }
 
-impl fmt::Display for TOXAV_ERR_SEND_FRAME {
+impl fmt::Display for SendFrameError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.description())
     }

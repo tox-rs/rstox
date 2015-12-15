@@ -240,7 +240,7 @@ pub enum Event {
     CallState(u32, u32),
     BitRateStatus(u32, u32, u32),
     AudioReceiveFrame(u32, Vec<i16>, usize, u8, u32),
-    VideoReceiveFrame(u32, u16, u16, u8, u8, u8, i32, i32, i32),
+    VideoReceiveFrame(u32, u16, u16, Vec<u8>, Vec<u8>, Vec<u8>, i32, i32, i32),
 }
 
 #[repr(C)]
