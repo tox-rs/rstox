@@ -26,6 +26,8 @@
 
 
 use libc::{/*c_int,*/ c_uint, c_void};
+use std::thread;
+use std::time::Duration;
 use std::mem;
 use std::sync::mpsc::Sender;
 
@@ -145,9 +147,13 @@ pub enum TOXAV_CALL_CONTROL {
 ///////////////////////////////
 // Creation and destruction //
 /////////////////////////////
+
+#[derive(Clone, PartialEq, Eq)]
 pub struct ToxAv {
     av: *mut ll::ToxAV
 }
+
+unsafe impl Send for ToxAv {}
 
 impl ToxAv {
     pub fn new(tox: &mut Tox) -> Result<ToxAv, errors::TOXAV_ERR_NEW> {
@@ -169,11 +175,14 @@ impl ToxAv {
         }
     }
 
-    pub fn interval(&self) -> u32 {
-        unsafe { ll::toxav_iteration_interval(self.av) }
+    pub fn wait(&self) {
+        unsafe {
+            let delay = ll::toxav_iteration_interval(self.av);
+           thread:: sleep(Duration::new(0, delay));
+        }
     }
 
-    pub fn iterate(&mut self) {
+    pub fn tick(&mut self) {
         unsafe { ll::toxav_iterate(self.av) };
     }
 
@@ -242,6 +251,46 @@ impl ToxAv {
             ))
         })
     }
+
+    pub fn send_audio(
+        &mut self,
+        friend_number: u32,
+        pcm: i16,
+        sample_count: usize,
+        channels: u8,
+        sampling_rate: u32
+    ) -> Result<bool, errors::TOXAV_ERR_SEND_FRAME> {
+        Ok(unsafe {
+            tox_try!(err, ll::toxav_audio_send_frame(
+                self.av,
+                friend_number,
+                &pcm,
+                sample_count,
+                channels,
+                sampling_rate,
+                &mut err
+            ))
+        })
+    }
+
+    pub fn send_video(
+        &mut self,
+        friend_number: u32,
+        width: u16,
+        height: u16,
+        y: u8, u: u8, v: u8
+    ) -> Result<bool, errors::TOXAV_ERR_SEND_FRAME> {
+        Ok(unsafe {
+            tox_try!(err, ll::toxav_video_send_frame(
+                self.av,
+                friend_number,
+                width,
+                height,
+                &y, &u, &v,
+                &mut err
+            ))
+        })
+    }
 }
 
 impl Drop for ToxAv {
@@ -292,7 +341,7 @@ extern fn on_audio_receive_frame(
     toxav: *mut ll::ToxAV,
     friend_number: u32,
     pcm: *const i16,
-    sample_count: u32,
+    sample_count: usize,
     channels: u8,
     sampling_rate: u32,
     chan: *mut c_void

@@ -2,7 +2,8 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::{slice, mem, ffi, ptr, fmt};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::thread::{sleep_ms};
+use std::time::Duration;
+use std::thread::sleep;
 use std::str::FromStr;
 
 use libc::{c_uint, c_void};
@@ -10,6 +11,7 @@ use libc::{c_uint, c_void};
 pub use self::ll::Tox as Tox_Struct;
 pub use self::Event::*;
 use self::errors::*;
+use av::ToxAv;
 
 mod ll;
 pub mod errors;
@@ -237,7 +239,7 @@ pub enum Event {
     Call(u32, bool, bool),
     CallState(u32, u32),
     BitRateStatus(u32, u32, u32),
-    AudioReceiveFrame(u32, i16, u32, u8, u32),
+    AudioReceiveFrame(u32, i16, usize, u8, u32),
     VideoReceiveFrame(u32, u16, u16, u8, u8, u8, i32, i32, i32),
 }
 
@@ -443,8 +445,11 @@ impl Tox {
     }
 
     /// Ticks the Tox and returns an iterator to the Tox events
-    pub fn iter(&mut self) -> ToxIter {
+    pub fn iter(&mut self, av: Option<&mut ToxAv>) -> ToxIter {
         self.tick();
+        if av.is_some() {
+            av.unwrap().tick();
+        };
 
         ToxIter::new(self.event_rx.clone())
     }
@@ -459,7 +464,7 @@ impl Tox {
     pub fn wait(&self) {
         unsafe {
             let delay = ll::tox_iteration_interval(self.raw);
-            sleep_ms(delay);
+            sleep(Duration::new(0, delay));
         }
     }
 

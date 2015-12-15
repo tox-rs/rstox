@@ -22,13 +22,26 @@ fn main() {
     println!("{}", tox.get_address());
 
     loop {
-        for ev in tox.iter() {
+        for ev in tox.iter(Some(&mut toxav)) {
+            println!("Tox event: {:?}", ev.clone());
+
             match ev {
-                Event::FriendRequest(cid, _) => {
-                    tox.add_friend_norequest(&cid).ok();
+                Event::FriendRequest(pk, _) => {
+                    tox.add_friend_norequest(&pk).ok();
                 },
-                ev => { println!("Tox event: {:?}", ev); },
-            }
+                Event::FriendMessage(fnum, _, msg) => {
+                    if &msg == "call me" {
+                        toxav.call(fnum, 48, 64).ok();
+                    };
+                },
+                Event::Call(fnum, _, _) => {
+                    toxav.answer(fnum, 48, 64).ok();
+                },
+                Event::AudioReceiveFrame(fnum, pcm, count, chan, rate) => {
+                    toxav.send_audio(fnum, pcm, count, chan, rate).ok();
+                },
+                _ => ()
+            };
         }
 
         tox.wait();
