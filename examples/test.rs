@@ -17,7 +17,7 @@ fn main() {
     println!("{}", tox.get_address());
 
     loop {
-        for ev in tox.iter(None) {
+        for ev in tox.iter() {
             match ev {
                 FriendRequest(cid, _) => {
                     tox.add_friend_norequest(&cid).unwrap();

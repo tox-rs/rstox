@@ -1,5 +1,7 @@
 extern crate rstox;
 
+use std::fs::File;
+use std::io::{ Read, Write };
 use rstox::core::{ Tox, ToxOptions, Event };
 use rstox::av::{ ToxAv, CallControl };
 
@@ -10,11 +12,7 @@ static BOOTSTRAP_KEY: &'static str =
 static BOT_NAME: &'static str = "testavbot";
 
 fn main() {
-    use std::fs::File;
-    use std::io::{ Read, Write };
-
     let mut data = Vec::new();
-
     let mut tox = Tox::new(ToxOptions::new(), match File::open("./test.tox") {
         Ok(mut fd) => {
             fd.read_to_end(&mut data).ok();
@@ -33,7 +31,7 @@ fn main() {
     println!("{}", tox.get_address());
 
     loop {
-        for ev in tox.iter(Some(&mut toxav)) {
+        for ev in tox.iter() {
             match ev {
                 Event::FriendRequest(pk, _) => {
                     tox.add_friend_norequest(&pk).ok();
@@ -57,7 +55,6 @@ fn main() {
                     toxav.send_audio(fnum, &pcm, count, chan, rate).ok();
                 },
                 Event::VideoReceiveFrame(fnum, w, h, y, u, v, ys, us, vs) => {
-
                     let mut yy = Vec::new();
                     for i in 0..h {
                         let mut yyy = y[(i as usize * ys as usize)..((i as usize * ys as usize) + w as usize)].to_vec();
@@ -82,6 +79,7 @@ fn main() {
             };
         }
 
+        toxav.tick();
         tox.wait();
     }
 }

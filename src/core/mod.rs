@@ -11,7 +11,6 @@ use libc::{c_uint, c_void};
 pub use self::ll::Tox as Tox_Struct;
 pub use self::Event::*;
 use self::errors::*;
-use av::ToxAv;
 
 mod ll;
 pub mod errors;
@@ -445,11 +444,8 @@ impl Tox {
     }
 
     /// Ticks the Tox and returns an iterator to the Tox events
-    pub fn iter(&mut self, av: Option<&mut ToxAv>) -> ToxIter {
+    pub fn iter(&mut self) -> ToxIter {
         self.tick();
-        if av.is_some() {
-            av.unwrap().tick();
-        };
 
         ToxIter::new(self.event_rx.clone())
     }
