@@ -460,7 +460,7 @@ impl Tox {
     pub fn wait(&self) {
         unsafe {
             let delay = ll::tox_iteration_interval(self.raw);
-            sleep(Duration::new(0, delay));
+            sleep(Duration::from_millis(delay as u64));
         }
     }
 

@@ -216,7 +216,7 @@ extern {
      * Start new A/V session. There can only be one session per
      * [`Tox`](../../core/struct.Tox.html) instance.
      */
-    pub fn toxav_new(tox: *mut Tox, error: *mut errors::NewError) -> *mut ToxAV;
+    pub fn toxav_new(tox: *mut Tox, error: *mut errors::NewAvError) -> *mut ToxAV;
 
     /**
      * Releases all resources associated with the A/V session.

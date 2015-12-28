@@ -190,7 +190,7 @@ pub struct ToxAv {
 unsafe impl Send for ToxAv {}
 
 impl ToxAv {
-    pub fn new(tox: &mut Tox) -> Result<ToxAv, errors::NewError> {
+    pub fn new(tox: &mut Tox) -> Result<ToxAv, errors::NewAvError> {
         let mut toxav = ToxAv {
             av: unsafe { tox_try!(err, ll::toxav_new(tox.raw, &mut err)) }
         };

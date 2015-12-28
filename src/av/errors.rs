@@ -7,7 +7,7 @@ use std::fmt;
 /// Creation and destruction
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum NewError {
+pub enum NewAvError {
     /// The function returned successfully.
     #[doc(hidden)] NoError = 0,
     /// One of the arguments to the function was NULL when it was not expected.
@@ -19,19 +19,19 @@ pub enum NewError {
     Multiple,
 }
 
-impl Error for NewError {
+impl Error for NewAvError {
     fn description(&self) -> &str {
         match *self {
-            NewError::NoError => "new: no error",
-            NewError::NullError => "new: null",
-            NewError::MallocError => "new: failed to allocate memory",
-            NewError::Multiple =>
+            NewAvError::NoError => "new: no error",
+            NewAvError::NullError => "new: null",
+            NewAvError::MallocError => "new: failed to allocate memory",
+            NewAvError::Multiple =>
                 "new: attempted to create a second session for same Tox instance",
         }
     }
 }
 
-impl fmt::Display for NewError {
+impl fmt::Display for NewAvError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.description())
     }
