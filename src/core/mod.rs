@@ -2,7 +2,8 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::{slice, mem, ffi, ptr, fmt};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::thread::{sleep_ms};
+use std::time::Duration;
+use std::thread::sleep;
 use std::str::FromStr;
 
 use libc::{c_uint, c_void};
@@ -232,6 +233,13 @@ pub enum Event {
     GroupTitle(i32, i32, String),
     /// `(gnum, pnum, ChatChange)`
     GroupNamelistChange(i32, i32, ChatChange),
+
+    /// ToxAV Event
+    Call(u32, bool, bool),
+    CallState(u32, u32),
+    BitRateStatus(u32, u32, u32),
+    AudioReceiveFrame(u32, Vec<i16>, usize, u8, u32),
+    VideoReceiveFrame(u32, u16, u16, Vec<u8>, Vec<u8>, Vec<u8>, i32, i32, i32),
 }
 
 #[repr(C)]
@@ -370,10 +378,10 @@ macro_rules! tox_option {
 }
 
 pub struct Tox {
-    raw: *mut ll::Tox,
+    pub raw: *mut ll::Tox,
     event_rx: Rc<RefCell<Receiver<Event>>>,
     #[allow(dead_code)]
-    event_tx: Box<Sender<Event>>,
+    pub event_tx: Box<Sender<Event>>,
 }
 
 impl Drop for Tox {
@@ -452,7 +460,7 @@ impl Tox {
     pub fn wait(&self) {
         unsafe {
             let delay = ll::tox_iteration_interval(self.raw);
-            sleep_ms(delay);
+            sleep(Duration::from_millis(delay as u64));
         }
     }
 
