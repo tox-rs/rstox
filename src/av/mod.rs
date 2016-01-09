@@ -212,7 +212,7 @@ impl ToxAv {
     pub fn wait(&self) {
         unsafe {
             let delay = ll::toxav_iteration_interval(self.av);
-            sleep(Duration::new(0, delay));
+            sleep(Duration::from_millis(delay as u64));
         }
     }
 
