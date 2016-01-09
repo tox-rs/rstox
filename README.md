@@ -19,7 +19,7 @@ and make something - [example](/examples/test.rs)
 Toxcore [API documentation](https://github.com/irungentoo/toxcore/blob/master/toxcore/tox.h)
 
 
-**rstox** is licensed under [LGPLv3](LICENSE)
+**rstox** is licensed under [GPLv3+](LICENSE)
 
 
 [toxcore]:https://github.com/irungentoo/toxcore
