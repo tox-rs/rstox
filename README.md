@@ -23,3 +23,9 @@ Toxcore [API documentation](https://github.com/irungentoo/toxcore/blob/master/to
 
 
 [toxcore]:https://github.com/irungentoo/toxcore
+
+## Contribuion
+
+I do not develop rstox since I'm lazy and [tox development is not public](https://antox.me/my-time-at-tox.html). But pull requests are still welcome.
+
+If you find an issue, consider fixing it yourself.
