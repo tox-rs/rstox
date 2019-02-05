@@ -408,7 +408,7 @@ impl Tox {
         let mut btx = Box::new(tx);
         let rrrx = Rc::new(RefCell::new(rx)); // too much bloat to just get a channel, eh?
         unsafe {
-            let chan: *mut c_void = mem::transmute(&mut *btx);
+            let chan: *mut c_void = &mut *btx as *mut _ as *mut _;
 
             ll::tox_callback_self_connection_status(tox, on_connection_status, chan);
             ll::tox_callback_friend_request(tox, on_friend_request, chan);
@@ -476,7 +476,7 @@ impl Tox {
     pub fn bootstrap(&mut self, host: &str, port: u16, public_key: PublicKey) -> Result<(), BootstrapError> {
         unsafe {
             let c_host = ffi::CString::new(host).unwrap();
-            let c_pk: *const u8 = mem::transmute(&public_key);
+            let c_pk: *const u8 = &public_key as *const _ as *const _;
             tox_try!(err, ll::tox_bootstrap(self.raw, c_host.as_ptr(), port, c_pk, &mut err));
         }
         Ok(())
@@ -634,7 +634,7 @@ impl Tox {
     // FRIEND STUFF
     pub fn friend_by_public_key(&self, public_key: PublicKey) -> Option<u32> {
         unsafe {
-            let pk: *const u8 = mem::transmute(&public_key);
+            let pk: *const u8 = &public_key as *const _ as *const _;
             let fnum = tox_option!(err, ll::tox_friend_by_public_key(self.raw, pk, &mut err));
             Some(fnum)
         }
@@ -658,8 +658,8 @@ impl Tox {
 
     pub fn get_friend_public_key(&self, fnum: u32) -> Option<PublicKey> {
         unsafe {
-            let public_key: PublicKey = mem::uninitialized();
-            let pk: *mut u8 = mem::transmute(&public_key);
+            let mut public_key: PublicKey = mem::uninitialized();
+            let pk: *mut u8 = &mut public_key as *mut _ as *mut _;
             tox_option!(err, ll::tox_friend_get_public_key(self.raw, fnum, pk, &mut err));
             Some(public_key)
         }
@@ -838,7 +838,7 @@ impl Tox {
 
     pub fn group_get_title(&self, groupnumber: i32) -> Option<String> {
         unsafe {
-            let tox: *mut ll::Tox = mem::transmute(self.raw);
+            let tox: *mut ll::Tox = self.raw;
             let mut title: Vec<u8> = Vec::with_capacity(128);
             let len = some_or_minus!(ll::tox_group_get_title(tox, groupnumber, title.as_mut_ptr(), 128));
             title.set_len(len.unwrap() as usize);
@@ -915,15 +915,15 @@ macro_rules! parse_string {
 
 extern fn on_connection_status(_: *mut ll::Tox, status: Connection, chan: *mut c_void) {
     unsafe {
-        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         tx.send(ConnectionStatus(status)).unwrap();
     }
 }
 
 extern fn on_friend_request(_: *mut ll::Tox, public_key: *const u8, message: *const u8, length: usize, chan: *mut c_void) {
     unsafe {
-        let tx: &mut Sender<Event> = mem::transmute(chan);
-        let pk: &PublicKey = mem::transmute(public_key);
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
+        let pk: &PublicKey = &*(public_key as *const _);
         let message = String::from_utf8_lossy(slice::from_raw_parts(message, length)).into_owned();
         tx.send(FriendRequest(*pk, message)).unwrap();
     }
@@ -932,7 +932,7 @@ extern fn on_friend_request(_: *mut ll::Tox, public_key: *const u8, message: *co
 extern fn on_friend_message(_: *mut ll::Tox, fnum: u32, kind: MessageType,
         message: *const u8, length: usize, chan: *mut c_void) {
     unsafe {
-        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         let message = String::from_utf8_lossy(slice::from_raw_parts(message, length)).into_owned();
         tx.send(FriendMessage(fnum, kind, message)).unwrap();
 
@@ -941,7 +941,7 @@ extern fn on_friend_message(_: *mut ll::Tox, fnum: u32, kind: MessageType,
 
 extern fn on_friend_name(_: *mut ll::Tox, fnum: u32, name: *const u8, length: usize, chan: *mut c_void) {
     unsafe {
-        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         let name = String::from_utf8_lossy(slice::from_raw_parts(name, length)).into_owned();
         tx.send(FriendName(fnum, name)).unwrap();
     }
@@ -949,7 +949,7 @@ extern fn on_friend_name(_: *mut ll::Tox, fnum: u32, name: *const u8, length: us
 
 extern fn on_friend_status_message(_: *mut ll::Tox, fnum: u32, message: *const u8, length: usize, chan: *mut c_void) {
     unsafe {
-        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         let message = String::from_utf8_lossy(slice::from_raw_parts(message, length)).into_owned();
         tx.send(FriendStatusMessage(fnum, message)).unwrap();
     }
@@ -957,35 +957,35 @@ extern fn on_friend_status_message(_: *mut ll::Tox, fnum: u32, message: *const u
 
 extern fn on_friend_status(_: *mut ll::Tox, fnum: u32, status: UserStatus, chan: *mut c_void) {
     unsafe {
-        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         tx.send(FriendStatus(fnum, status)).unwrap();
     }
 }
 
 extern fn on_friend_connection_status(_: *mut ll::Tox, fnum: u32, status: Connection, chan: *mut c_void) {
     unsafe {
-        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         tx.send(FriendConnectionStatus(fnum, status)).unwrap();
     }
 }
 
 extern fn on_friend_typing(_: *mut ll::Tox, fnum: u32, is_typing: u8, chan: *mut c_void) {
     unsafe {
-        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         tx.send(FriendTyping(fnum, is_typing != 0)).unwrap();
     }
 }
 
 extern fn on_lossy_package(_: *mut ll::Tox, fnum: u32, data: *const u8, length: usize, chan: *mut c_void) {
     unsafe {
-        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         let data: Vec<u8> = From::from(slice::from_raw_parts(data, length as usize));
         tx.send(LossyPackage(fnum, data)).unwrap();
     }
 }
 extern fn on_lossless_package(_: *mut ll::Tox, fnum: u32, data: *const u8, length: usize, chan: *mut c_void) {
     unsafe {
-        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         let data: Vec<u8> = From::from(slice::from_raw_parts(data, length as usize));
         tx.send(LosslessPackage(fnum, data)).unwrap();
     }
@@ -994,7 +994,7 @@ extern fn on_lossless_package(_: *mut ll::Tox, fnum: u32, data: *const u8, lengt
 extern fn on_group_invite(_: *mut ll::Tox, friendnumber: i32, kind: u8, data: *const u8,
         length: u16, chan: *mut c_void) {
     unsafe {
-        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         let data: Vec<u8> = From::from(slice::from_raw_parts(data, length as usize));
         let kind: GroupchatType = mem::transmute(kind);
         tx.send(GroupInvite(friendnumber, kind, data)).unwrap();
@@ -1003,21 +1003,21 @@ extern fn on_group_invite(_: *mut ll::Tox, friendnumber: i32, kind: u8, data: *c
 
 extern fn on_group_message(_: *mut ll::Tox, groupnumber: i32, frindgroupnumber: i32,
         message: *const u8, len: u16, chan: *mut c_void) {
-    let tx: &mut Sender<Event> = unsafe { mem::transmute(chan) };
+    let tx: &mut Sender<Event> = unsafe { &mut *(chan as *mut _) };
     let msg = parse_string!(message, len);
     tx.send(GroupMessage(groupnumber, frindgroupnumber, msg)).unwrap();
 }
 
 extern fn on_group_action(_: *mut ll::Tox, groupnumber: i32, frindgroupnumber: i32,
         action: *const u8, len: u16, chan: *mut c_void) {
-    let tx: &mut Sender<Event> = unsafe { mem::transmute(chan) };
+    let tx: &mut Sender<Event> = unsafe { &mut *(chan as *mut _) };
     let action = parse_string!(action, len);
     tx.send(GroupMessage(groupnumber, frindgroupnumber, action)).unwrap();
 }
 
 extern fn on_group_title(_: *mut ll::Tox, groupnumber: i32, frindgroupnumber: i32,
         message: *const u8, length: u8, chan: *mut c_void) {
-    let tx: &mut Sender<Event> = unsafe { mem::transmute(chan) };
+    let tx: &mut Sender<Event> = unsafe { &mut *(chan as *mut _) };
     let msg = parse_string!(message, length);
     tx.send(GroupTitle(groupnumber, frindgroupnumber, msg)).unwrap();
 }
@@ -1025,7 +1025,7 @@ extern fn on_group_title(_: *mut ll::Tox, groupnumber: i32, frindgroupnumber: i3
 extern fn on_group_namelist_change(_: *mut ll::Tox, groupnumber: i32, peernumber: i32,
         change: u8, chan: *mut c_void) {
     unsafe {
-        let tx: &mut Sender<Event> = mem::transmute(chan);
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         let change: ChatChange = mem::transmute(change);
         tx.send(GroupNamelistChange(groupnumber, peernumber, change)).unwrap();
     }
