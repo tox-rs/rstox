@@ -25,7 +25,7 @@
 use libc::c_void;
 use super::CallControl;
 use super::errors;
-use core::Tox_Struct;
+use crate::core::Tox_Struct;
 
 pub type Tox = Tox_Struct;
 

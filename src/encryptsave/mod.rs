@@ -62,7 +62,7 @@ pub struct ToxPassKey {
 impl ToxPassKey {
     /// Generate ToxPassKey, using a random salt.
     pub fn new(passphrase: &[u8]) -> Result<ToxPassKey, errors::KeyDerivationError>  {
-        let passkey = try!(tox_res!(
+        let passkey = tox_res!(
             passkey,
             err,
             ll::tox_derive_key_from_pass(
@@ -71,7 +71,7 @@ impl ToxPassKey {
                 &mut passkey,
                 &mut err
             )
-        ));
+        )?;
 
         Ok(ToxPassKey { passkey: passkey })
     }
@@ -88,7 +88,7 @@ impl ToxPassKey {
 
     /// Generate ToxPassKey, using the specified salt.
     pub fn with(passphrase: &[u8], salt: Vec<u8>) -> Result<ToxPassKey, errors::KeyDerivationError> {
-        let passkey = try!(tox_res!(
+        let passkey = tox_res!(
             passkey,
             err,
             ll::tox_derive_key_with_salt(
@@ -98,7 +98,7 @@ impl ToxPassKey {
                 &mut passkey,
                 &mut err
             )
-        ));
+        )?;
 
         Ok(ToxPassKey { passkey: passkey })
     }

@@ -31,8 +31,3 @@ before_install:
   - cd toxcore && autoreconf -if && ./configure && make -j$(nproc) && sudo make install
   - echo '/usr/local/lib/' | sudo tee -a /etc/ld.so.conf.d/locallib.conf
   - sudo ldconfig
-  - sudo add-apt-repository --yes ppa:hansjorg/rust
-  - sudo add-apt-repository --yes ppa:cmrx64/cargo
-  - sudo apt-get update -qq
-install:
-  - sudo apt-get install -qq rust-nightly cargo

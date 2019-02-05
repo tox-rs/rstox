@@ -1,4 +1,4 @@
-use encryptsave::errors;
+use crate::encryptsave::errors;
 
 
 pub const PASS_SALT_LENGTH: usize = 32;

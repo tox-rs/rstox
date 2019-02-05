@@ -123,14 +123,14 @@ impl Address {
 
 impl fmt::Display for Address {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(self.key.fmt(fmt));
-        try!(write!(fmt, "{:02X}", self.nospam[0]));
-        try!(write!(fmt, "{:02X}", self.nospam[1]));
-        try!(write!(fmt, "{:02X}", self.nospam[2]));
-        try!(write!(fmt, "{:02X}", self.nospam[3]));
+        self.key.fmt(fmt)?;
+        write!(fmt, "{:02X}", self.nospam[0])?;
+        write!(fmt, "{:02X}", self.nospam[1])?;
+        write!(fmt, "{:02X}", self.nospam[2])?;
+        write!(fmt, "{:02X}", self.nospam[3])?;
         let check = self.checksum();
-        try!(write!(fmt, "{:02X}", check[0]));
-        try!(write!(fmt, "{:02X}", check[1]));
+        write!(fmt, "{:02X}", check[0])?;
+        write!(fmt, "{:02X}", check[1])?;
         Ok(())
     }
 }
@@ -193,7 +193,7 @@ pub struct PublicKey {
 impl fmt::Display for PublicKey {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for &n in self.raw.iter() {
-            try!(write!(fmt, "{:02X}", n));
+            write!(fmt, "{:02X}", n)?;
         }
         Ok(())
     }
@@ -208,7 +208,7 @@ impl FromStr for PublicKey {
 
         let mut id = [0u8; PUBLIC_KEY_SIZE];
 
-        try!(parse_hex(s, &mut id[..]));
+        parse_hex(s, &mut id[..])?;
         Ok(PublicKey { raw: id })
     }
 }

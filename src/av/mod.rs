@@ -33,7 +33,7 @@ use std::time::Duration;
 use std::mem;
 use std::sync::mpsc::Sender;
 
-use core::{Tox, Event};
+use crate::core::{Tox, Event};
 
 pub mod ll;
 pub mod errors;
