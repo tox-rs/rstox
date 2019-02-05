@@ -260,12 +260,6 @@ pub enum SavedataType {
 
 /**
     ToxOptions provides options that tox will be initalized with.
-
-    Usage:
-    ```
-        let txo = ToxOptions::new().ipv6().proxy("[proxy address]", port);
-        let tox = Tox::new(txo);
-    ```
 */
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct ToxOptions {

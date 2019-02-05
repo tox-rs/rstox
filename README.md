@@ -1,7 +1,8 @@
 # rstox
 
-**rstox** is a Rust wrapper for [toxcore].
 [![Build Status](https://travis-ci.org/suhr/rstox.svg)](https://travis-ci.org/suhr/rstox)
+
+**rstox** is a Rust wrapper for [toxcore].
 
 You need to have `toxcore` installed as dependency to use `rstox`. Either follow [install instructions](https://github.com/irungentoo/toxcore/blob/master/INSTALL.md), or, if you're running Gentoo, add Tox overlay and install `toxcore`:
 
