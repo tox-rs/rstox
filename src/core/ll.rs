@@ -1,442 +1,1172 @@
-#![allow(improper_ctypes, non_camel_case_types)]
+#![allow(bad_style)]
 
-use super::errors;
-use super::{Connection, UserStatus, MessageType, FileControl, };
+use super::{
+    UserStatus,
+    MessageType,
+    ProxyType,
+    SavedataType,
+    LogLevel,
+    Connection,
+    FileControl,
+    ConferenceType
+};
 
-use libc::{c_int, c_uint, c_void};
-
-pub enum Struct_Tox { }
-pub type Tox = Struct_Tox;
+use super::errors::*;
 
 #[repr(C)]
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct Tox_Options {
-    pub ipv6_enabled: u8,
-    pub udp_enabled: u8,
-    pub proxy_type: super::ProxyType,
-    pub proxy_host: *const ::libc::c_char,
-    pub proxy_port: u16,
-    pub start_port: u16,
-    pub end_port: u16,
-    pub savedata_type: super::SavedataType,
-    pub savedata_data: *const u8,
-    pub savedata_length: usize,
+#[derive(Debug, Copy, Clone)]
+pub struct Tox {
+    _unused: [u8; 0],
 }
-
-impl ::std::default::Default for Tox_Options {
-    fn default() -> Tox_Options {
-        unsafe {
-            let mut opts = ::std::mem::uninitialized();
-            tox_options_default(&mut opts);
-            opts
-        }
-    }
-}
-
-pub type Enum_TOX_ERR_OPTIONS_NEW = ::libc::c_uint;
-pub const TOX_ERR_OPTIONS_NEW_OK: ::libc::c_uint = 0;
-pub const TOX_ERR_OPTIONS_NEW_MALLOC: ::libc::c_uint = 1;
-pub type TOX_ERR_OPTIONS_NEW = Enum_TOX_ERR_OPTIONS_NEW;
-
-pub type tox_self_connection_status_cb =
-    extern "C" fn(tox: *mut Tox, connection_status: Connection,
-                  user_data: *mut ::libc::c_void) -> ();
-
-
-pub type Enum_TOX_ERR_FRIEND_DELETE = ::libc::c_uint;
-pub const TOX_ERR_FRIEND_DELETE_OK: ::libc::c_uint = 0;
-pub const TOX_ERR_FRIEND_DELETE_FRIEND_NOT_FOUND: ::libc::c_uint = 1;
-pub type TOX_ERR_FRIEND_DELETE = Enum_TOX_ERR_FRIEND_DELETE;
-
-
-pub type Enum_TOX_ERR_FRIEND_BY_PUBLIC_KEY = ::libc::c_uint;
-pub const TOX_ERR_FRIEND_BY_PUBLIC_KEY_OK: ::libc::c_uint = 0;
-pub const TOX_ERR_FRIEND_BY_PUBLIC_KEY_NULL: ::libc::c_uint = 1;
-pub const TOX_ERR_FRIEND_BY_PUBLIC_KEY_NOT_FOUND: ::libc::c_uint = 2;
-pub type TOX_ERR_FRIEND_BY_PUBLIC_KEY = Enum_TOX_ERR_FRIEND_BY_PUBLIC_KEY;
-
-pub type Enum_TOX_ERR_FRIEND_GET_PUBLIC_KEY = ::libc::c_uint;
-pub const TOX_ERR_FRIEND_GET_PUBLIC_KEY_OK: ::libc::c_uint = 0;
-pub const TOX_ERR_FRIEND_GET_PUBLIC_KEY_FRIEND_NOT_FOUND: ::libc::c_uint = 1;
-pub type TOX_ERR_FRIEND_GET_PUBLIC_KEY = Enum_TOX_ERR_FRIEND_GET_PUBLIC_KEY;
-
-pub type Enum_TOX_ERR_FRIEND_GET_LAST_ONLINE = ::libc::c_uint;
-pub const TOX_ERR_FRIEND_GET_LAST_ONLINE_OK: ::libc::c_uint = 0;
-pub const TOX_ERR_FRIEND_GET_LAST_ONLINE_FRIEND_NOT_FOUND: ::libc::c_uint = 1;
-pub type TOX_ERR_FRIEND_GET_LAST_ONLINE = Enum_TOX_ERR_FRIEND_GET_LAST_ONLINE;
-
-pub type Enum_TOX_ERR_FRIEND_QUERY = ::libc::c_uint;
-pub const TOX_ERR_FRIEND_QUERY_OK: ::libc::c_uint = 0;
-pub const TOX_ERR_FRIEND_QUERY_NULL: ::libc::c_uint = 1;
-pub const TOX_ERR_FRIEND_QUERY_FRIEND_NOT_FOUND: ::libc::c_uint = 2;
-pub type TOX_ERR_FRIEND_QUERY = Enum_TOX_ERR_FRIEND_QUERY;
-
-pub type tox_friend_name_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32,
-                  name: *const u8, length: usize,
-                  user_data: *mut ::libc::c_void) -> ();
-pub type tox_friend_status_message_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32,
-                  message: *const u8, length: usize,
-                  user_data: *mut ::libc::c_void) -> ();
-pub type tox_friend_status_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32,
-                  status: UserStatus, user_data: *mut ::libc::c_void)
-        -> ();
-pub type tox_friend_connection_status_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32,
-                  connection_status: Connection,
-                  user_data: *mut ::libc::c_void) -> ();
-pub type tox_friend_typing_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32, is_typing: u8,
-                  user_data: *mut ::libc::c_void) -> ();
-
-pub type Enum_TOX_ERR_SET_TYPING = ::libc::c_uint;
-pub const TOX_ERR_SET_TYPING_OK: ::libc::c_uint = 0;
-pub const TOX_ERR_SET_TYPING_FRIEND_NOT_FOUND: ::libc::c_uint = 1;
-pub type TOX_ERR_SET_TYPING = Enum_TOX_ERR_SET_TYPING;
-
-
-pub type tox_friend_read_receipt_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32,
-                  message_id: u32, user_data: *mut ::libc::c_void) -> ();
-pub type tox_friend_request_cb =
-    extern "C" fn(tox: *mut Tox, public_key: *const u8,
-                  message: *const u8, length: usize,
-                  user_data: *mut ::libc::c_void) -> ();
-pub type tox_friend_message_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32,
-                  _type: MessageType, message: *const u8,
-                  length: usize, user_data: *mut ::libc::c_void) -> ();
-
-
-pub type tox_file_recv_control_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32,
-                  file_number: u32, control: FileControl,
-                  user_data: *mut ::libc::c_void) -> ();
-
-
-
-pub type tox_file_chunk_request_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32,
-                  file_number: u32, position: u64, length: usize,
-                  user_data: *mut ::libc::c_void) -> ();
-
-pub type tox_file_recv_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32,
-                  file_number: u32, kind: u32, file_size: u64,
-                  filename: *const u8, filename_length: usize,
-                  user_data: *mut ::libc::c_void) -> ();
-
-pub type tox_file_recv_chunk_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32,
-                  file_number: u32, position: u64,
-                  data: *const u8, length: usize,
-                  user_data: *mut ::libc::c_void) -> ();
-
-
-pub type tox_friend_lossy_packet_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32,
-                  data: *const u8, length: usize,
-                  user_data: *mut ::libc::c_void) -> ();
-pub type tox_friend_lossless_packet_cb =
-    extern "C" fn(tox: *mut Tox, friend_number: u32,
-                  data: *const u8, length: usize,
-                  user_data: *mut ::libc::c_void) -> ();
-
-pub type Enum_TOX_ERR_GET_PORT = ::libc::c_uint;
-pub const TOX_ERR_GET_PORT_OK: ::libc::c_uint = 0;
-pub const TOX_ERR_GET_PORT_NOT_BOUND: ::libc::c_uint = 1;
-pub type TOX_ERR_GET_PORT = Enum_TOX_ERR_GET_PORT;
-
-pub type Enum_Unnamed1 = ::libc::c_uint;
-pub const TOX_GROUPCHAT_TYPE_TEXT: ::libc::c_uint = 0;
-pub const TOX_GROUPCHAT_TYPE_AV: ::libc::c_uint = 1;
-pub type Enum_Unnamed2 = ::libc::c_uint;
-
-pub const TOX_CHAT_CHANGE_PEER_ADD: ::libc::c_uint = 0;
-pub const TOX_CHAT_CHANGE_PEER_DEL: ::libc::c_uint = 1;
-pub const TOX_CHAT_CHANGE_PEER_NAME: ::libc::c_uint = 2;
-pub type TOX_CHAT_CHANGE = Enum_Unnamed2;
 
 #[link(name = "toxcore")]
 extern "C" {
     pub fn tox_version_major() -> u32;
     pub fn tox_version_minor() -> u32;
     pub fn tox_version_patch() -> u32;
-    pub fn tox_version_is_compatible(major: u32, minor: u32,
-                                     patch: u32) -> u8;
-    pub fn tox_options_default(options: *mut Tox_Options) -> ();
-    pub fn tox_options_new(error: *mut TOX_ERR_OPTIONS_NEW)
-     -> *mut Tox_Options;
-    pub fn tox_options_free(options: *mut Tox_Options) -> ();
-    pub fn tox_new(options: *const Tox_Options, error: *mut errors::InitError) -> *mut Tox;
-    pub fn tox_kill(tox: *mut Tox) -> ();
-    pub fn tox_get_savedata_size(tox: *const Tox) -> usize;
-    pub fn tox_get_savedata(tox: *const Tox, data: *mut u8) -> ();
-    pub fn tox_bootstrap(tox: *mut Tox, host: *const ::libc::c_char,
-                         port: u16, public_key: *const u8,
-                         error: *mut errors::BootstrapError) -> u8;
-    pub fn tox_add_tcp_relay(tox: *mut Tox, host: *const ::libc::c_char,
-                             port: u16, public_key: *const u8,
-                             error: *mut errors::BootstrapError) -> u8;
-    pub fn tox_self_get_connection_status(tox: *const Tox) -> Connection;
-    pub fn tox_callback_self_connection_status(tox: *mut Tox,
-                                               function: tox_self_connection_status_cb,
-                                               user_data: *mut ::libc::c_void)
-     -> ();
-    pub fn tox_iteration_interval(tox: *const Tox) -> u32;
-    pub fn tox_iterate(tox: *mut Tox) -> ();
-    pub fn tox_self_get_address(tox: *const Tox, address: *mut u8) -> ();
-    pub fn tox_self_set_nospam(tox: *mut Tox, nospam: u32) -> ();
-    pub fn tox_self_get_nospam(tox: *const Tox) -> u32;
-    pub fn tox_self_get_public_key(tox: *const Tox, public_key: *mut u8)
-     -> ();
-    pub fn tox_self_get_secret_key(tox: *const Tox, secret_key: *mut u8)
-     -> ();
-    pub fn tox_self_set_name(tox: *mut Tox, name: *const u8,
-                             length: usize, error: *mut errors::SetInfoError)
-     -> u8;
-    pub fn tox_self_get_name_size(tox: *const Tox) -> usize;
-    pub fn tox_self_get_name(tox: *const Tox, name: *mut u8) -> ();
-    pub fn tox_self_set_status_message(tox: *mut Tox, status: *const u8,
-                                       length: usize,
-                                       error: *mut errors::SetInfoError) -> u8;
-    pub fn tox_self_get_status_message_size(tox: *const Tox) -> usize;
-    pub fn tox_self_get_status_message(tox: *const Tox, status: *mut u8)
-     -> ();
-    pub fn tox_self_set_status(tox: *mut Tox, user_status: UserStatus)
-     -> ();
-    pub fn tox_self_get_status(tox: *const Tox) -> UserStatus;
-    pub fn tox_friend_add(tox: *mut Tox, address: *const u8,
-                          message: *const u8, length: usize,
-                          error: *mut errors::FriendAddError) -> u32;
-    pub fn tox_friend_add_norequest(tox: *mut Tox, public_key: *const u8,
-                                    error: *mut errors::FriendAddError)
-     -> u32;
-    pub fn tox_friend_delete(tox: *mut Tox, friend_number: u32,
-                             error: *mut TOX_ERR_FRIEND_DELETE) -> u8;
-    pub fn tox_friend_by_public_key(tox: *const Tox,
-                                    public_key: *const u8,
-                                    error: *mut TOX_ERR_FRIEND_BY_PUBLIC_KEY)
-     -> u32;
-    pub fn tox_friend_get_public_key(tox: *const Tox, friend_number: u32,
-                                     public_key: *mut u8,
-                                     error:
-                                         *mut TOX_ERR_FRIEND_GET_PUBLIC_KEY)
-     -> u8;
-    pub fn tox_friend_exists(tox: *const Tox, friend_number: u32) -> u8;
-    pub fn tox_friend_get_last_online(tox: *const Tox,
-                                      friend_number: u32,
-                                      error:
-                                          *mut TOX_ERR_FRIEND_GET_LAST_ONLINE)
-     -> u64;
-    pub fn tox_self_get_friend_list_size(tox: *const Tox) -> usize;
-    pub fn tox_self_get_friend_list(tox: *const Tox, list: *mut u32)
-     -> ();
-    pub fn tox_friend_get_name_size(tox: *const Tox, friend_number: u32,
-                                    error: *mut TOX_ERR_FRIEND_QUERY)
-     -> usize;
-    pub fn tox_friend_get_name(tox: *const Tox, friend_number: u32,
-                               name: *mut u8,
-                               error: *mut TOX_ERR_FRIEND_QUERY) -> u8;
-    pub fn tox_callback_friend_name(tox: *mut Tox,
-                                    function:
-                                        tox_friend_name_cb, /* *mut tox_... */
-                                    user_data: *mut ::libc::c_void) -> ();
-    pub fn tox_friend_get_status_message_size(tox: *const Tox,
-                                              friend_number: u32,
-                                              error:
-                                                  *mut TOX_ERR_FRIEND_QUERY)
-     -> usize;
-    pub fn tox_friend_get_status_message(tox: *const Tox,
-                                         friend_number: u32,
-                                         message: *mut u8,
-                                         error: *mut TOX_ERR_FRIEND_QUERY)
-     -> u8;
-    pub fn tox_callback_friend_status_message(tox: *mut Tox,
-                                              function: tox_friend_status_message_cb, /* *mut tox_... */
-                                              user_data: *mut ::libc::c_void)
-     -> ();
-    pub fn tox_friend_get_status(tox: *const Tox, friend_number: u32,
-                                 error: *mut TOX_ERR_FRIEND_QUERY)
-     -> UserStatus;
-    pub fn tox_callback_friend_status(tox: *mut Tox,
-                                      function: tox_friend_status_cb, /* *mut tox_... */
-                                      user_data: *mut ::libc::c_void) -> ();
-    pub fn tox_friend_get_connection_status(tox: *const Tox,
-                                            friend_number: u32,
-                                            error: *mut TOX_ERR_FRIEND_QUERY)
-     -> Connection;
-    pub fn tox_callback_friend_connection_status(tox: *mut Tox,
-                                                 function: tox_friend_connection_status_cb, /* *mut tox_... */
-                                                 user_data:
-                                                     *mut ::libc::c_void)
-     -> ();
-    pub fn tox_friend_get_typing(tox: *const Tox, friend_number: u32,
-                                 error: *mut TOX_ERR_FRIEND_QUERY) -> u8;
-    pub fn tox_callback_friend_typing(tox: *mut Tox,
-                                      function: tox_friend_typing_cb, /* *mut tox_... */
-                                      user_data: *mut ::libc::c_void) -> ();
-    pub fn tox_self_set_typing(tox: *mut Tox, friend_number: u32,
-                               is_typing: u8, error: *mut TOX_ERR_SET_TYPING)
-     -> u8;
-    pub fn tox_friend_send_message(tox: *mut Tox, friend_number: u32,
-                                   _type: MessageType,
-                                   message: *const u8, length: usize,
-                                   error: *mut errors::FriendSendMessageError)
-     -> u32;
-    pub fn tox_callback_friend_read_receipt(tox: *mut Tox,
-                                            function: tox_friend_read_receipt_cb,
-                                            user_data: *mut ::libc::c_void)
-     -> ();
-    pub fn tox_callback_friend_request(tox: *mut Tox,
-                                       function: tox_friend_request_cb,
-                                       user_data: *mut ::libc::c_void) -> ();
-    pub fn tox_callback_friend_message(tox: *mut Tox,
-                                       function: tox_friend_message_cb,
-                                       user_data: *mut ::libc::c_void) -> ();
-    pub fn tox_hash(hash: *mut u8, data: *const u8, length: usize)
-     -> u8;
-    pub fn tox_file_control(tox: *mut Tox, friend_number: u32,
-                            file_number: u32, control: FileControl,
-                            error: *mut errors::FileControlError) -> u8;
-    pub fn tox_callback_file_recv_control(tox: *mut Tox,
-                                          function: tox_file_recv_cb,
-                                          user_data: *mut ::libc::c_void)
-     -> ();
-    pub fn tox_file_seek(tox: *mut Tox, friend_number: u32,
-                         file_number: u32, position: u64,
-                         error: *mut errors::FileSeekError) -> u8;
-    pub fn tox_file_get_file_id(tox: *const Tox, friend_number: u32,
-                                file_number: u32, file_id: *mut u8,
-                                error: *mut errors::FileGetError) -> u8;
-    pub fn tox_file_send(tox: *mut Tox, friend_number: u32,
-                         kind: u32, file_size: u64,
-                         file_id: *const u8, filename: *const u8,
-                         filename_length: usize,
-                         error: *mut errors::FileSendError) -> u32;
-    pub fn tox_file_send_chunk(tox: *mut Tox, friend_number: u32,
-                               file_number: u32, position: u64,
-                               data: *const u8, length: usize,
-                               error: *mut errors::FileSendChunkError) -> u8;
-    pub fn tox_callback_file_chunk_request(tox: *mut Tox,
-                                           function: tox_file_chunk_request_cb,
-                                           user_data: *mut ::libc::c_void)
-     -> ();
-    pub fn tox_callback_file_recv(tox: *mut Tox,
-                                  function: tox_file_recv_cb,
-                                  user_data: *mut ::libc::c_void) -> ();
-    pub fn tox_callback_file_recv_chunk(tox: *mut Tox,
-                                        function: tox_file_recv_chunk_cb,
-                                        user_data: *mut ::libc::c_void) -> ();
-    pub fn tox_friend_send_lossy_packet(tox: *mut Tox,
-                                        friend_number: u32,
-                                        data: *const u8, length: usize,
-                                        error:
-                                            *mut errors::FriendCustomPacketError)
-     -> u8;
-    pub fn tox_callback_friend_lossy_packet(tox: *mut Tox,
-                                            function: tox_friend_lossy_packet_cb,
-                                            user_data: *mut ::libc::c_void)
-     -> ();
-    pub fn tox_friend_send_lossless_packet(tox: *mut Tox,
-                                           friend_number: u32,
-                                           data: *const u8,
-                                           length: usize,
-                                           error:
-                                               *mut errors::FriendCustomPacketError)
-     -> u8;
-    pub fn tox_callback_friend_lossless_packet(tox: *mut Tox,
-                                               function: tox_friend_lossless_packet_cb,
-                                               user_data: *mut ::libc::c_void)
-     -> ();
-    pub fn tox_self_get_dht_id(tox: *const Tox, dht_id: *mut u8) -> ();
-    pub fn tox_self_get_udp_port(tox: *const Tox,
-                                 error: *mut TOX_ERR_GET_PORT) -> u16;
-    pub fn tox_self_get_tcp_port(tox: *const Tox,
-                                 error: *mut TOX_ERR_GET_PORT) -> u16;
+    pub fn tox_version_is_compatible(major: u32, minor: u32, patch: u32) -> bool;
+    pub fn tox_public_key_size() -> u32;
+    pub fn tox_secret_key_size() -> u32;
+    pub fn tox_conference_uid_size() -> u32;
+    pub fn tox_conference_id_size() -> u32;
+    pub fn tox_nospam_size() -> u32;
+    pub fn tox_address_size() -> u32;
+    pub fn tox_max_name_length() -> u32;
+    pub fn tox_max_status_message_length() -> u32;
+    pub fn tox_max_friend_request_length() -> u32;
+    pub fn tox_max_message_length() -> u32;
+    pub fn tox_max_custom_packet_size() -> u32;
+    pub fn tox_hash_length() -> u32;
+    pub fn tox_file_id_length() -> u32;
+    pub fn tox_max_filename_length() -> u32;
+    pub fn tox_max_hostname_length() -> u32;
+}
 
-    // +-----------------------------------------------------+
-    // | KLUDGE ALERT!!! This will be removed in the future. |
-    // +-----------------------------------------------------+
-    pub fn tox_callback_group_invite(tox: *mut Tox,
-                                     function:
-                                         /*Option<*/extern fn
-                                                  (arg1: *mut Tox,
-                                                   arg2: i32,
-                                                   arg3: u8,
-                                                   arg4: *const u8,
-                                                   arg5: u16,
-                                                   arg6: *mut c_void)/*>*/,
-                                     userdata: *mut c_void);
-    pub fn tox_callback_group_message(tox: *mut Tox,
-                                      function:
-                                          /*Option<*/extern fn
-                                                   (arg1: *mut Tox,
-                                                    arg2: c_int,
-                                                    arg3: c_int,
-                                                    arg4: *const u8,
-                                                    arg5: u16,
-                                                    arg6: *mut c_void)/*>*/,
-                                      userdata: *mut c_void);
-    pub fn tox_callback_group_action(tox: *mut Tox,
-                                     function:
-                                         /*Option<*/extern fn
-                                                  (arg1: *mut Tox,
-                                                   arg2: c_int,
-                                                   arg3: c_int,
-                                                   arg4: *const u8,
-                                                   arg5: u16,
-                                                   arg6: *mut c_void)/*>*/,
-                                     userdata: *mut c_void);
-    pub fn tox_callback_group_title(tox: *mut Tox,
-                                    function:
-                                        /*Option<*/extern fn
-                                                 (arg1: *mut Tox,
-                                                  arg2: c_int,
-                                                  arg3: c_int,
-                                                  arg4: *const u8,
-                                                  arg5: u8,
-                                                  arg6: *mut c_void)/*>*/,
-                                    userdata: *mut c_void);
-    pub fn tox_callback_group_namelist_change(tox: *mut Tox,
-                                              function:
-                                                  /*Option<*/extern fn
-                                                           (arg1: *mut Tox,
-                                                            arg2: c_int,
-                                                            arg3: c_int,
-                                                            arg4: u8,
-                                                            arg5: *mut c_void)/*>*/,
-                                              userdata: *mut c_void);
-    pub fn tox_add_groupchat(tox: *mut Tox) -> c_int;
-    pub fn tox_del_groupchat(tox: *mut Tox, groupnumber: c_int) -> c_int;
-    pub fn tox_group_peername(tox: *const Tox, groupnumber: c_int, peernumber: c_int,
-                              name: *mut u8) -> c_int;
-    pub fn tox_group_peer_pubkey(tox: *const Tox, groupnumber: c_int, peernumber: c_int,
-                                 pk: *mut u8) -> c_int;
-    pub fn tox_invite_friend(tox: *mut Tox, friendnumber: i32,
-                             groupnumber: c_int) -> c_int;
-    pub fn tox_join_groupchat(tox: *mut Tox, friendnumber: i32, data: *const u8,
-                              length: u16) -> c_int;
-    pub fn tox_group_message_send(tox: *mut Tox, groupnumber: c_int, message: *const u8,
-                                  length: u16) -> c_int;
-    pub fn tox_group_get_title(tox: *const Tox, groupnumber: c_int,
-                               title: *mut u8, max_length: u32) -> c_int;
-    pub fn tox_group_set_title(tox: *mut Tox, groupnumber: c_int, title: *const u8,
-                               length: u8) -> c_int;
-    pub fn tox_group_action_send(tox: *mut Tox, groupnumber: c_int, action: *const u8,
-                                 length: u16) -> c_int;
-    pub fn tox_group_peernumber_is_ours(tox: *const Tox, groupnumber: c_int,
-                                        peernumber: c_int) -> c_uint;
-    pub fn tox_group_number_peers(tox: *const Tox, groupnumber: c_int) -> c_int;
-    pub fn tox_group_get_names(tox: *const Tox, groupnumber: c_int,
-                               names: *mut [u8; 128], lengths: *mut u16,
-                               length: u16) -> c_int;
-    pub fn tox_count_chatlist(tox: *const Tox) -> u32;
-    pub fn tox_get_chatlist(tox: *const Tox, out_list: *mut i32, list_size: u32) -> u32;
-    pub fn tox_group_get_type(tox: *const Tox, groupnumber: c_int) -> c_int;
-    // ================================
-    // END OF NECESSARY DERPECATED CODE
-    // ================================
+pub type tox_log_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        level: LogLevel,
+        file: *const ::std::os::raw::c_char,
+        line: u32,
+        func: *const ::std::os::raw::c_char,
+        message: *const ::std::os::raw::c_char,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct Tox_Options {
+    pub ipv6_enabled: bool,
+    pub udp_enabled: bool,
+    pub local_discovery_enabled: bool,
+    pub proxy_type: ProxyType,
+    pub proxy_host: *const ::std::os::raw::c_char,
+    pub proxy_port: u16,
+    pub start_port: u16,
+    pub end_port: u16,
+    pub tcp_port: u16,
+    pub hole_punching_enabled: bool,
+    pub savedata_type: SavedataType,
+    pub savedata_data: *const u8,
+    pub savedata_length: usize,
+    pub log_callback: tox_log_cb,
+    pub log_user_data: *mut ::std::os::raw::c_void,
+}
+
+#[test]
+fn bindgen_test_layout_Tox_Options() {
+    assert_eq!(
+        ::std::mem::size_of::<Tox_Options>(),
+        64usize,
+        concat!("Size of: ", stringify!(Tox_Options))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<Tox_Options>(),
+        8usize,
+        concat!("Alignment of ", stringify!(Tox_Options))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).ipv6_enabled as *const _ as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(ipv6_enabled)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).udp_enabled as *const _ as usize },
+        1usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(udp_enabled)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::std::ptr::null::<Tox_Options>())).local_discovery_enabled as *const _ as usize
+        },
+        2usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(local_discovery_enabled)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).proxy_type as *const _ as usize },
+        4usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(proxy_type)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).proxy_host as *const _ as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(proxy_host)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).proxy_port as *const _ as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(proxy_port)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).start_port as *const _ as usize },
+        18usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(start_port)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).end_port as *const _ as usize },
+        20usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(end_port)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).tcp_port as *const _ as usize },
+        22usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(tcp_port)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::std::ptr::null::<Tox_Options>())).hole_punching_enabled as *const _ as usize
+        },
+        24usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(hole_punching_enabled)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).savedata_type as *const _ as usize },
+        28usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(savedata_type)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).savedata_data as *const _ as usize },
+        32usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(savedata_data)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).savedata_length as *const _ as usize },
+        40usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(savedata_length)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).log_callback as *const _ as usize },
+        48usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(log_callback)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<Tox_Options>())).log_user_data as *const _ as usize },
+        56usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(Tox_Options),
+            "::",
+            stringify!(log_user_data)
+        )
+    );
+}
+
+extern "C" {
+    pub fn tox_options_get_ipv6_enabled(options: *const Tox_Options) -> bool;
+    pub fn tox_options_set_ipv6_enabled(options: *mut Tox_Options, ipv6_enabled: bool);
+    pub fn tox_options_get_udp_enabled(options: *const Tox_Options) -> bool;
+    pub fn tox_options_set_udp_enabled(options: *mut Tox_Options, udp_enabled: bool);
+    pub fn tox_options_get_local_discovery_enabled(options: *const Tox_Options) -> bool;
+    pub fn tox_options_set_local_discovery_enabled(
+        options: *mut Tox_Options,
+        local_discovery_enabled: bool,
+    );
+    pub fn tox_options_get_proxy_type(options: *const Tox_Options) -> ProxyType;
+    pub fn tox_options_set_proxy_type(options: *mut Tox_Options, type_: ProxyType);
+    pub fn tox_options_get_proxy_host(options: *const Tox_Options)
+        -> *const ::std::os::raw::c_char;
+    pub fn tox_options_set_proxy_host(
+        options: *mut Tox_Options,
+        host: *const ::std::os::raw::c_char,
+    );
+    pub fn tox_options_get_proxy_port(options: *const Tox_Options) -> u16;
+    pub fn tox_options_set_proxy_port(options: *mut Tox_Options, port: u16);
+    pub fn tox_options_get_start_port(options: *const Tox_Options) -> u16;
+    pub fn tox_options_set_start_port(options: *mut Tox_Options, start_port: u16);
+    pub fn tox_options_get_end_port(options: *const Tox_Options) -> u16;
+    pub fn tox_options_set_end_port(options: *mut Tox_Options, end_port: u16);
+    pub fn tox_options_get_tcp_port(options: *const Tox_Options) -> u16;
+    pub fn tox_options_set_tcp_port(options: *mut Tox_Options, tcp_port: u16);
+    pub fn tox_options_get_hole_punching_enabled(options: *const Tox_Options) -> bool;
+    pub fn tox_options_set_hole_punching_enabled(
+        options: *mut Tox_Options,
+        hole_punching_enabled: bool,
+    );
+    pub fn tox_options_get_savedata_type(options: *const Tox_Options) -> SavedataType;
+    pub fn tox_options_set_savedata_type(options: *mut Tox_Options, type_: SavedataType);
+    pub fn tox_options_get_savedata_data(options: *const Tox_Options) -> *const u8;
+    pub fn tox_options_set_savedata_data(options: *mut Tox_Options, data: *const u8, length: usize);
+    pub fn tox_options_get_savedata_length(options: *const Tox_Options) -> usize;
+    pub fn tox_options_set_savedata_length(options: *mut Tox_Options, length: usize);
+    pub fn tox_options_get_log_callback(options: *const Tox_Options) -> tox_log_cb;
+    pub fn tox_options_set_log_callback(options: *mut Tox_Options, callback: tox_log_cb);
+    pub fn tox_options_get_log_user_data(
+        options: *const Tox_Options,
+    ) -> *mut ::std::os::raw::c_void;
+    pub fn tox_options_set_log_user_data(
+        options: *mut Tox_Options,
+        user_data: *mut ::std::os::raw::c_void,
+    );
+    pub fn tox_options_default(options: *mut Tox_Options);
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_OPTIONS_NEW {
+    TOX_ERR_OPTIONS_NEW_OK = 0,
+    TOX_ERR_OPTIONS_NEW_MALLOC = 1,
+}
+
+extern "C" {
+    pub fn tox_options_new(error: *mut TOX_ERR_OPTIONS_NEW) -> *mut Tox_Options;
+    pub fn tox_options_free(options: *mut Tox_Options);
+}
+
+extern "C" {
+    pub fn tox_new(options: *const Tox_Options, error: *mut InitError) -> *mut Tox;
+    pub fn tox_kill(tox: *mut Tox);
+    pub fn tox_get_savedata_size(tox: *const Tox) -> usize;
+    pub fn tox_get_savedata(tox: *const Tox, savedata: *mut u8);
+}
+extern "C" {
+    pub fn tox_bootstrap(
+        tox: *mut Tox,
+        host: *const ::std::os::raw::c_char,
+        port: u16,
+        public_key: *const u8,
+        error: *mut BootstrapError,
+    ) -> bool;
+    pub fn tox_add_tcp_relay(
+        tox: *mut Tox,
+        host: *const ::std::os::raw::c_char,
+        port: u16,
+        public_key: *const u8,
+        error: *mut BootstrapError,
+    ) -> bool;
+}
+
+extern "C" {
+    pub fn tox_self_get_connection_status(tox: *const Tox) -> Connection;
+}
+
+pub type tox_self_connection_status_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        connection_status: Connection,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_self_connection_status(
+        tox: *mut Tox,
+        callback: tox_self_connection_status_cb,
+    );
+    pub fn tox_iteration_interval(tox: *const Tox) -> u32;
+    pub fn tox_iterate(tox: *mut Tox, user_data: *mut ::std::os::raw::c_void);
+    pub fn tox_self_get_address(tox: *const Tox, address: *mut u8);
+    pub fn tox_self_set_nospam(tox: *mut Tox, nospam: u32);
+    pub fn tox_self_get_nospam(tox: *const Tox) -> u32;
+    pub fn tox_self_get_public_key(tox: *const Tox, public_key: *mut u8);
+    pub fn tox_self_get_secret_key(tox: *const Tox, secret_key: *mut u8);
+}
+
+extern "C" {
+    pub fn tox_self_set_name(
+        tox: *mut Tox,
+        name: *const u8,
+        length: usize,
+        error: *mut SetInfoError,
+    ) -> bool;
+    pub fn tox_self_get_name_size(tox: *const Tox) -> usize;
+    pub fn tox_self_get_name(tox: *const Tox, name: *mut u8);
+    pub fn tox_self_set_status_message(
+        tox: *mut Tox,
+        status_message: *const u8,
+        length: usize,
+        error: *mut SetInfoError,
+    ) -> bool;
+    pub fn tox_self_get_status_message_size(tox: *const Tox) -> usize;
+    pub fn tox_self_get_status_message(tox: *const Tox, status_message: *mut u8);
+    pub fn tox_self_set_status(tox: *mut Tox, status: UserStatus);
+    pub fn tox_self_get_status(tox: *const Tox) -> UserStatus;
+}
+
+extern "C" {
+    pub fn tox_friend_add(
+        tox: *mut Tox,
+        address: *const u8,
+        message: *const u8,
+        length: usize,
+        error: *mut FriendAddError,
+    ) -> u32;
+    pub fn tox_friend_add_norequest(
+        tox: *mut Tox,
+        public_key: *const u8,
+        error: *mut FriendAddError,
+    ) -> u32;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_FRIEND_DELETE {
+    TOX_ERR_FRIEND_DELETE_OK = 0,
+    TOX_ERR_FRIEND_DELETE_FRIEND_NOT_FOUND = 1,
+}
+
+extern "C" {
+    pub fn tox_friend_delete(
+        tox: *mut Tox,
+        friend_number: u32,
+        error: *mut TOX_ERR_FRIEND_DELETE,
+    ) -> bool;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_FRIEND_BY_PUBLIC_KEY {
+    TOX_ERR_FRIEND_BY_PUBLIC_KEY_OK = 0,
+    TOX_ERR_FRIEND_BY_PUBLIC_KEY_NULL = 1,
+    TOX_ERR_FRIEND_BY_PUBLIC_KEY_NOT_FOUND = 2,
+}
+
+extern "C" {
+    pub fn tox_friend_by_public_key(
+        tox: *const Tox,
+        public_key: *const u8,
+        error: *mut TOX_ERR_FRIEND_BY_PUBLIC_KEY,
+    ) -> u32;
+    pub fn tox_friend_exists(tox: *const Tox, friend_number: u32) -> bool;
+    pub fn tox_self_get_friend_list_size(tox: *const Tox) -> usize;
+    pub fn tox_self_get_friend_list(tox: *const Tox, friend_list: *mut u32);
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_FRIEND_GET_PUBLIC_KEY {
+    TOX_ERR_FRIEND_GET_PUBLIC_KEY_OK = 0,
+    TOX_ERR_FRIEND_GET_PUBLIC_KEY_FRIEND_NOT_FOUND = 1,
+}
+
+extern "C" {
+    pub fn tox_friend_get_public_key(
+        tox: *const Tox,
+        friend_number: u32,
+        public_key: *mut u8,
+        error: *mut TOX_ERR_FRIEND_GET_PUBLIC_KEY,
+    ) -> bool;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_FRIEND_GET_LAST_ONLINE {
+    TOX_ERR_FRIEND_GET_LAST_ONLINE_OK = 0,
+    TOX_ERR_FRIEND_GET_LAST_ONLINE_FRIEND_NOT_FOUND = 1,
+}
+
+extern "C" {
+    pub fn tox_friend_get_last_online(
+        tox: *const Tox,
+        friend_number: u32,
+        error: *mut TOX_ERR_FRIEND_GET_LAST_ONLINE,
+    ) -> u64;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_FRIEND_QUERY {
+    TOX_ERR_FRIEND_QUERY_OK = 0,
+    TOX_ERR_FRIEND_QUERY_NULL = 1,
+    TOX_ERR_FRIEND_QUERY_FRIEND_NOT_FOUND = 2,
+}
+
+extern "C" {
+    pub fn tox_friend_get_name_size(
+        tox: *const Tox,
+        friend_number: u32,
+        error: *mut TOX_ERR_FRIEND_QUERY,
+    ) -> usize;
+    pub fn tox_friend_get_name(
+        tox: *const Tox,
+        friend_number: u32,
+        name: *mut u8,
+        error: *mut TOX_ERR_FRIEND_QUERY,
+    ) -> bool;
+}
+
+pub type tox_friend_name_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        name: *const u8,
+        length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_friend_name(tox: *mut Tox, callback: tox_friend_name_cb);
+    pub fn tox_friend_get_status_message_size(
+        tox: *const Tox,
+        friend_number: u32,
+        error: *mut TOX_ERR_FRIEND_QUERY,
+    ) -> usize;
+    pub fn tox_friend_get_status_message(
+        tox: *const Tox,
+        friend_number: u32,
+        status_message: *mut u8,
+        error: *mut TOX_ERR_FRIEND_QUERY,
+    ) -> bool;
+}
+
+pub type tox_friend_status_message_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        message: *const u8,
+        length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_friend_status_message(
+        tox: *mut Tox,
+        callback: tox_friend_status_message_cb,
+    );
+    pub fn tox_friend_get_status(
+        tox: *const Tox,
+        friend_number: u32,
+        error: *mut TOX_ERR_FRIEND_QUERY,
+    ) -> UserStatus;
+}
+
+pub type tox_friend_status_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        status: UserStatus,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_friend_status(tox: *mut Tox, callback: tox_friend_status_cb);
+    pub fn tox_friend_get_connection_status(
+        tox: *const Tox,
+        friend_number: u32,
+        error: *mut TOX_ERR_FRIEND_QUERY,
+    ) -> Connection;
+}
+
+pub type tox_friend_connection_status_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        connection_status: Connection,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_friend_connection_status(
+        tox: *mut Tox,
+        callback: tox_friend_connection_status_cb,
+    );
+    pub fn tox_friend_get_typing(
+        tox: *const Tox,
+        friend_number: u32,
+        error: *mut TOX_ERR_FRIEND_QUERY,
+    ) -> bool;
+}
+
+pub type tox_friend_typing_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        is_typing: bool,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_friend_typing(tox: *mut Tox, callback: tox_friend_typing_cb);
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_SET_TYPING {
+    TOX_ERR_SET_TYPING_OK = 0,
+    TOX_ERR_SET_TYPING_FRIEND_NOT_FOUND = 1,
+}
+
+extern "C" {
+    pub fn tox_self_set_typing(
+        tox: *mut Tox,
+        friend_number: u32,
+        typing: bool,
+        error: *mut TOX_ERR_SET_TYPING,
+    ) -> bool;
+}
+
+extern "C" {
+    pub fn tox_friend_send_message(
+        tox: *mut Tox,
+        friend_number: u32,
+        type_: MessageType,
+        message: *const u8,
+        length: usize,
+        error: *mut FriendSendMessageError,
+    ) -> u32;
+}
+
+pub type tox_friend_read_receipt_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        message_id: u32,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_friend_read_receipt(tox: *mut Tox, callback: tox_friend_read_receipt_cb);
+}
+
+pub type tox_friend_request_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        public_key: *const u8,
+        message: *const u8,
+        length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_friend_request(tox: *mut Tox, callback: tox_friend_request_cb);
+}
+
+pub type tox_friend_message_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        type_: MessageType,
+        message: *const u8,
+        length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_friend_message(tox: *mut Tox, callback: tox_friend_message_cb);
+    pub fn tox_hash(hash: *mut u8, data: *const u8, length: usize) -> bool;
+}
+
+extern "C" {
+    pub fn tox_file_control(
+        tox: *mut Tox,
+        friend_number: u32,
+        file_number: u32,
+        control: FileControl,
+        error: *mut FileControlError,
+    ) -> bool;
+}
+
+pub type tox_file_recv_control_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        file_number: u32,
+        control: FileControl,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_file_recv_control(tox: *mut Tox, callback: tox_file_recv_control_cb);
+}
+
+extern "C" {
+    pub fn tox_file_seek(
+        tox: *mut Tox,
+        friend_number: u32,
+        file_number: u32,
+        position: u64,
+        error: *mut FileSeekError,
+    ) -> bool;
+}
+
+extern "C" {
+    pub fn tox_file_get_file_id(
+        tox: *const Tox,
+        friend_number: u32,
+        file_number: u32,
+        file_id: *mut u8,
+        error: *mut FileGetError,
+    ) -> bool;
+}
+
+extern "C" {
+    pub fn tox_file_send(
+        tox: *mut Tox,
+        friend_number: u32,
+        kind: u32,
+        file_size: u64,
+        file_id: *const u8,
+        filename: *const u8,
+        filename_length: usize,
+        error: *mut FileSendError,
+    ) -> u32;
+}
+
+extern "C" {
+    pub fn tox_file_send_chunk(
+        tox: *mut Tox,
+        friend_number: u32,
+        file_number: u32,
+        position: u64,
+        data: *const u8,
+        length: usize,
+        error: *mut FileSendChunkError,
+    ) -> bool;
+}
+
+pub type tox_file_chunk_request_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        file_number: u32,
+        position: u64,
+        length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_file_chunk_request(tox: *mut Tox, callback: tox_file_chunk_request_cb);
+}
+
+pub type tox_file_recv_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        file_number: u32,
+        kind: u32,
+        file_size: u64,
+        filename: *const u8,
+        filename_length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_file_recv(tox: *mut Tox, callback: tox_file_recv_cb);
+}
+
+pub type tox_file_recv_chunk_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        file_number: u32,
+        position: u64,
+        data: *const u8,
+        length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_file_recv_chunk(tox: *mut Tox, callback: tox_file_recv_chunk_cb);
+}
+
+pub type tox_conference_invite_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        type_: ConferenceType,
+        cookie: *const u8,
+        length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_conference_invite(tox: *mut Tox, callback: tox_conference_invite_cb);
+}
+
+pub type tox_conference_connected_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        conference_number: u32,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_conference_connected(tox: *mut Tox, callback: tox_conference_connected_cb);
+}
+
+pub type tox_conference_message_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        conference_number: u32,
+        peer_number: u32,
+        type_: MessageType,
+        message: *const u8,
+        length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_conference_message(tox: *mut Tox, callback: tox_conference_message_cb);
+}
+
+pub type tox_conference_title_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        conference_number: u32,
+        peer_number: u32,
+        title: *const u8,
+        length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_conference_title(tox: *mut Tox, callback: tox_conference_title_cb);
+}
+
+pub type tox_conference_peer_name_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        conference_number: u32,
+        peer_number: u32,
+        name: *const u8,
+        length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_conference_peer_name(tox: *mut Tox, callback: tox_conference_peer_name_cb);
+}
+
+pub type tox_conference_peer_list_changed_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        conference_number: u32,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_conference_peer_list_changed(
+        tox: *mut Tox,
+        callback: tox_conference_peer_list_changed_cb,
+    );
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_CONFERENCE_NEW {
+    TOX_ERR_CONFERENCE_NEW_OK = 0,
+    TOX_ERR_CONFERENCE_NEW_INIT = 1,
+}
+
+extern "C" {
+    pub fn tox_conference_new(tox: *mut Tox, error: *mut TOX_ERR_CONFERENCE_NEW) -> u32;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_CONFERENCE_DELETE {
+    TOX_ERR_CONFERENCE_DELETE_OK = 0,
+    TOX_ERR_CONFERENCE_DELETE_CONFERENCE_NOT_FOUND = 1,
+}
+
+extern "C" {
+    pub fn tox_conference_delete(
+        tox: *mut Tox,
+        conference_number: u32,
+        error: *mut TOX_ERR_CONFERENCE_DELETE,
+    ) -> bool;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_CONFERENCE_PEER_QUERY {
+    TOX_ERR_CONFERENCE_PEER_QUERY_OK = 0,
+    TOX_ERR_CONFERENCE_PEER_QUERY_CONFERENCE_NOT_FOUND = 1,
+    TOX_ERR_CONFERENCE_PEER_QUERY_PEER_NOT_FOUND = 2,
+    TOX_ERR_CONFERENCE_PEER_QUERY_NO_CONNECTION = 3,
+}
+
+extern "C" {
+    pub fn tox_conference_peer_count(
+        tox: *const Tox,
+        conference_number: u32,
+        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+    ) -> u32;
+    pub fn tox_conference_peer_get_name_size(
+        tox: *const Tox,
+        conference_number: u32,
+        peer_number: u32,
+        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+    ) -> usize;
+    pub fn tox_conference_peer_get_name(
+        tox: *const Tox,
+        conference_number: u32,
+        peer_number: u32,
+        name: *mut u8,
+        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+    ) -> bool;
+    pub fn tox_conference_peer_get_public_key(
+        tox: *const Tox,
+        conference_number: u32,
+        peer_number: u32,
+        public_key: *mut u8,
+        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+    ) -> bool;
+    pub fn tox_conference_peer_number_is_ours(
+        tox: *const Tox,
+        conference_number: u32,
+        peer_number: u32,
+        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+    ) -> bool;
+    pub fn tox_conference_offline_peer_count(
+        tox: *const Tox,
+        conference_number: u32,
+        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+    ) -> u32;
+    pub fn tox_conference_offline_peer_get_name_size(
+        tox: *const Tox,
+        conference_number: u32,
+        offline_peer_number: u32,
+        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+    ) -> usize;
+    pub fn tox_conference_offline_peer_get_name(
+        tox: *const Tox,
+        conference_number: u32,
+        offline_peer_number: u32,
+        name: *mut u8,
+        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+    ) -> bool;
+    pub fn tox_conference_offline_peer_get_public_key(
+        tox: *const Tox,
+        conference_number: u32,
+        offline_peer_number: u32,
+        public_key: *mut u8,
+        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+    ) -> bool;
+    pub fn tox_conference_offline_peer_get_last_active(
+        tox: *const Tox,
+        conference_number: u32,
+        offline_peer_number: u32,
+        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+    ) -> u64;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_CONFERENCE_INVITE {
+    TOX_ERR_CONFERENCE_INVITE_OK = 0,
+    TOX_ERR_CONFERENCE_INVITE_CONFERENCE_NOT_FOUND = 1,
+    TOX_ERR_CONFERENCE_INVITE_FAIL_SEND = 2,
+    TOX_ERR_CONFERENCE_INVITE_NO_CONNECTION = 3,
+}
+
+extern "C" {
+    pub fn tox_conference_invite(
+        tox: *mut Tox,
+        friend_number: u32,
+        conference_number: u32,
+        error: *mut TOX_ERR_CONFERENCE_INVITE,
+    ) -> bool;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_CONFERENCE_JOIN {
+    TOX_ERR_CONFERENCE_JOIN_OK = 0,
+    TOX_ERR_CONFERENCE_JOIN_INVALID_LENGTH = 1,
+    TOX_ERR_CONFERENCE_JOIN_WRONG_TYPE = 2,
+    TOX_ERR_CONFERENCE_JOIN_FRIEND_NOT_FOUND = 3,
+    TOX_ERR_CONFERENCE_JOIN_DUPLICATE = 4,
+    TOX_ERR_CONFERENCE_JOIN_INIT_FAIL = 5,
+    TOX_ERR_CONFERENCE_JOIN_FAIL_SEND = 6,
+}
+
+extern "C" {
+    pub fn tox_conference_join(
+        tox: *mut Tox,
+        friend_number: u32,
+        cookie: *const u8,
+        length: usize,
+        error: *mut TOX_ERR_CONFERENCE_JOIN,
+    ) -> u32;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_CONFERENCE_SEND_MESSAGE {
+    TOX_ERR_CONFERENCE_SEND_MESSAGE_OK = 0,
+    TOX_ERR_CONFERENCE_SEND_MESSAGE_CONFERENCE_NOT_FOUND = 1,
+    TOX_ERR_CONFERENCE_SEND_MESSAGE_TOO_LONG = 2,
+    TOX_ERR_CONFERENCE_SEND_MESSAGE_NO_CONNECTION = 3,
+    TOX_ERR_CONFERENCE_SEND_MESSAGE_FAIL_SEND = 4,
+}
+
+extern "C" {
+    pub fn tox_conference_send_message(
+        tox: *mut Tox,
+        conference_number: u32,
+        type_: MessageType,
+        message: *const u8,
+        length: usize,
+        error: *mut TOX_ERR_CONFERENCE_SEND_MESSAGE,
+    ) -> bool;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_CONFERENCE_TITLE {
+    TOX_ERR_CONFERENCE_TITLE_OK = 0,
+    TOX_ERR_CONFERENCE_TITLE_CONFERENCE_NOT_FOUND = 1,
+    TOX_ERR_CONFERENCE_TITLE_INVALID_LENGTH = 2,
+    TOX_ERR_CONFERENCE_TITLE_FAIL_SEND = 3,
+}
+
+extern "C" {
+    pub fn tox_conference_get_title_size(
+        tox: *const Tox,
+        conference_number: u32,
+        error: *mut TOX_ERR_CONFERENCE_TITLE,
+    ) -> usize;
+    pub fn tox_conference_get_title(
+        tox: *const Tox,
+        conference_number: u32,
+        title: *mut u8,
+        error: *mut TOX_ERR_CONFERENCE_TITLE,
+    ) -> bool;
+    pub fn tox_conference_set_title(
+        tox: *mut Tox,
+        conference_number: u32,
+        title: *const u8,
+        length: usize,
+        error: *mut TOX_ERR_CONFERENCE_TITLE,
+    ) -> bool;
+    pub fn tox_conference_get_chatlist_size(tox: *const Tox) -> usize;
+    pub fn tox_conference_get_chatlist(tox: *const Tox, chatlist: *mut u32);
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_CONFERENCE_GET_TYPE {
+    TOX_ERR_CONFERENCE_GET_TYPE_OK = 0,
+    TOX_ERR_CONFERENCE_GET_TYPE_CONFERENCE_NOT_FOUND = 1,
+}
+
+extern "C" {
+    pub fn tox_conference_get_type(
+        tox: *const Tox,
+        conference_number: u32,
+        error: *mut TOX_ERR_CONFERENCE_GET_TYPE,
+    ) -> ConferenceType;
+    pub fn tox_conference_get_id(tox: *const Tox, conference_number: u32, id: *mut u8) -> bool;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_CONFERENCE_BY_ID {
+    TOX_ERR_CONFERENCE_BY_ID_OK = 0,
+    TOX_ERR_CONFERENCE_BY_ID_NULL = 1,
+    TOX_ERR_CONFERENCE_BY_ID_NOT_FOUND = 2,
+}
+
+extern "C" {
+    pub fn tox_conference_by_id(
+        tox: *const Tox,
+        id: *const u8,
+        error: *mut TOX_ERR_CONFERENCE_BY_ID,
+    ) -> u32;
+    pub fn tox_conference_get_uid(tox: *const Tox, conference_number: u32, uid: *mut u8) -> bool;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_CONFERENCE_BY_UID {
+    TOX_ERR_CONFERENCE_BY_UID_OK = 0,
+    TOX_ERR_CONFERENCE_BY_UID_NULL = 1,
+    TOX_ERR_CONFERENCE_BY_UID_NOT_FOUND = 2,
+}
+
+extern "C" {
+    pub fn tox_conference_by_uid(
+        tox: *const Tox,
+        uid: *const u8,
+        error: *mut TOX_ERR_CONFERENCE_BY_UID,
+    ) -> u32;
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum FriendCustomPacketError {
+    TOX_ERR_FRIEND_CUSTOM_PACKET_OK = 0,
+    TOX_ERR_FRIEND_CUSTOM_PACKET_NULL = 1,
+    TOX_ERR_FRIEND_CUSTOM_PACKET_FRIEND_NOT_FOUND = 2,
+    TOX_ERR_FRIEND_CUSTOM_PACKET_FRIEND_NOT_CONNECTED = 3,
+    TOX_ERR_FRIEND_CUSTOM_PACKET_INVALID = 4,
+    TOX_ERR_FRIEND_CUSTOM_PACKET_EMPTY = 5,
+    TOX_ERR_FRIEND_CUSTOM_PACKET_TOO_LONG = 6,
+    TOX_ERR_FRIEND_CUSTOM_PACKET_SENDQ = 7,
+}
+
+extern "C" {
+    pub fn tox_friend_send_lossy_packet(
+        tox: *mut Tox,
+        friend_number: u32,
+        data: *const u8,
+        length: usize,
+        error: *mut FriendCustomPacketError,
+    ) -> bool;
+    pub fn tox_friend_send_lossless_packet(
+        tox: *mut Tox,
+        friend_number: u32,
+        data: *const u8,
+        length: usize,
+        error: *mut FriendCustomPacketError,
+    ) -> bool;
+}
+
+pub type tox_friend_lossy_packet_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        data: *const u8,
+        length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_friend_lossy_packet(tox: *mut Tox, callback: tox_friend_lossy_packet_cb);
+}
+
+pub type tox_friend_lossless_packet_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        tox: *mut Tox,
+        friend_number: u32,
+        data: *const u8,
+        length: usize,
+        user_data: *mut ::std::os::raw::c_void,
+    ),
+>;
+
+extern "C" {
+    pub fn tox_callback_friend_lossless_packet(
+        tox: *mut Tox,
+        callback: tox_friend_lossless_packet_cb,
+    );
+}
+
+extern "C" {
+    pub fn tox_self_get_dht_id(tox: *const Tox, dht_id: *mut u8);
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TOX_ERR_GET_PORT {
+    TOX_ERR_GET_PORT_OK = 0,
+    TOX_ERR_GET_PORT_NOT_BOUND = 1,
+}
+
+extern "C" {
+    pub fn tox_self_get_udp_port(tox: *const Tox, error: *mut TOX_ERR_GET_PORT) -> u16;
+}
+
+extern "C" {
+    pub fn tox_self_get_tcp_port(tox: *const Tox, error: *mut TOX_ERR_GET_PORT) -> u16;
 }

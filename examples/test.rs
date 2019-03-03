@@ -22,12 +22,6 @@ fn main() {
                 FriendRequest(cid, _) => {
                     tox.add_friend_norequest(&cid).unwrap();
                 },
-                GroupInvite(fid, kind, data) => {
-                    match kind {
-                        GroupchatType::Text => { tox.join_groupchat(fid, &data).unwrap(); },
-                        _ => {},
-                    }
-                },
                 ev => { println!("Tox event: {:?}", ev); },
             }
         }
