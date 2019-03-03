@@ -10,24 +10,20 @@ matrix:
 sudo: required
 
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -y build-essential libtool autotools-dev automake checkinstall check git yasm pkg-config libvpx-dev
-  - wget http://downloads.xiph.org/releases/opus/opus-1.0.3.tar.gz
-  - tar xvzf opus-1.0.3.tar.gz
-  - cd opus-1.0.3
-  - ./configure
-  - make -j$(nproc)
-  - sudo make install
-  - cd ..
-  - git clone git://github.com/jedisct1/libsodium.git
-  - cd libsodium
-  - git checkout tags/1.0.3
-  - ./autogen.sh
-  - ./configure && make -j$(nproc)
-  - sudo checkinstall --install --pkgname libsodium --pkgversion 1.0.3 --nodoc -y
-  - sudo ldconfig
-  - cd ..
-  - git clone https://github.com/irungentoo/toxcore.git
-  - cd toxcore && autoreconf -if && ./configure && make -j$(nproc) && sudo make install
-  - echo '/usr/local/lib/' | sudo tee -a /etc/ld.so.conf.d/locallib.conf
-  - sudo ldconfig
+  - |
+    sudo apt-get update -qq
+    sudo apt-get install -y build-essential libtool autotools-dev automake checkinstall \
+      cmake check git yasm pkg-config libvpx-dev libopus-dev
+  - |
+    git clone -b 1.0.17 git://github.com/jedisct1/libsodium.git
+    cd libsodium
+    ./autogen.sh
+    ./configure && make -j$(nproc)
+    sudo checkinstall --install --pkgname libsodium --pkgversion 1.0.17 --nodoc -y
+  - |
+    git clone -b v0.2.9 https://github.com/TokTok/c-toxcore.git
+    cd c-toxcore
+    mkdir _build && cd _build
+    cmake ..
+    make
+    sudo make install
