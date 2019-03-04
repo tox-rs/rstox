@@ -1,25 +1,21 @@
 # rstox
 
-[![Build Status](https://travis-ci.org/suhr/rstox.svg)](https://travis-ci.org/suhr/rstox)
+[![Build Status](https://travis-ci.org/tox-rs/rstox.svg)](https://travis-ci.org/tox-rs/rstox)
 
 **rstox** is a Rust wrapper for [toxcore].
 
-You need to have `toxcore` installed as dependency to use `rstox`. Either follow [install instructions](https://github.com/irungentoo/toxcore/blob/master/INSTALL.md), or, if you're running Gentoo, add Tox overlay and install `toxcore`:
-
-```
-# layman -f && layman -a tox-overlay && emerge net-libs/tox
-```
+You need to have `toxcore` installed as dependency to use `rstox`. Follow the [install instructions](https://github.com/TokTok/c-toxcore/blob/master/INSTALL.md).
 
 To use `rstox` in your project, add to your `Cargo.toml`:
 
 ```
 [dependencies.rstox]
-git = "https://github.com/suhr/rstox.git"
+git = "https://github.com/tox-rs/rstox.git"
 ```
 and make something - [example](/examples/test.rs)
 
-Toxcore [API documentation](https://github.com/irungentoo/toxcore/blob/master/toxcore/tox.h)
+Toxcore [API documentation](https://github.com/TokTok/c-toxcore/blob/master/toxcore/tox.h)
 
 **rstox** is licensed under [GPLv3+](LICENSE)
 
-[toxcore]:https://github.com/irungentoo/toxcore
+[toxcore]:https://github.com/TokTok/c-toxcore
