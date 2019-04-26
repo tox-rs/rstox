@@ -856,10 +856,6 @@ pub enum TOX_ERR_CONFERENCE_NEW {
     TOX_ERR_CONFERENCE_NEW_INIT = 1,
 }
 
-extern "C" {
-    pub fn tox_conference_new(tox: *mut Tox, error: *mut TOX_ERR_CONFERENCE_NEW) -> u32;
-}
-
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TOX_ERR_CONFERENCE_DELETE {
@@ -868,175 +864,112 @@ pub enum TOX_ERR_CONFERENCE_DELETE {
 }
 
 extern "C" {
+    pub fn tox_conference_new(tox: *mut Tox, error: *mut TOX_ERR_CONFERENCE_NEW) -> u32;
     pub fn tox_conference_delete(
         tox: *mut Tox,
         conference_number: u32,
         error: *mut TOX_ERR_CONFERENCE_DELETE,
     ) -> bool;
-}
-
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum TOX_ERR_CONFERENCE_PEER_QUERY {
-    TOX_ERR_CONFERENCE_PEER_QUERY_OK = 0,
-    TOX_ERR_CONFERENCE_PEER_QUERY_CONFERENCE_NOT_FOUND = 1,
-    TOX_ERR_CONFERENCE_PEER_QUERY_PEER_NOT_FOUND = 2,
-    TOX_ERR_CONFERENCE_PEER_QUERY_NO_CONNECTION = 3,
-}
-
-extern "C" {
     pub fn tox_conference_peer_count(
         tox: *const Tox,
         conference_number: u32,
-        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+        error: *mut ConferencePeerQueryError,
     ) -> u32;
     pub fn tox_conference_peer_get_name_size(
         tox: *const Tox,
         conference_number: u32,
         peer_number: u32,
-        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+        error: *mut ConferencePeerQueryError,
     ) -> usize;
     pub fn tox_conference_peer_get_name(
         tox: *const Tox,
         conference_number: u32,
         peer_number: u32,
         name: *mut u8,
-        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+        error: *mut ConferencePeerQueryError,
     ) -> bool;
     pub fn tox_conference_peer_get_public_key(
         tox: *const Tox,
         conference_number: u32,
         peer_number: u32,
         public_key: *mut u8,
-        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+        error: *mut ConferencePeerQueryError,
     ) -> bool;
     pub fn tox_conference_peer_number_is_ours(
         tox: *const Tox,
         conference_number: u32,
         peer_number: u32,
-        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+        error: *mut ConferencePeerQueryError,
     ) -> bool;
     pub fn tox_conference_offline_peer_count(
         tox: *const Tox,
         conference_number: u32,
-        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+        error: *mut ConferencePeerQueryError,
     ) -> u32;
     pub fn tox_conference_offline_peer_get_name_size(
         tox: *const Tox,
         conference_number: u32,
         offline_peer_number: u32,
-        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+        error: *mut ConferencePeerQueryError,
     ) -> usize;
     pub fn tox_conference_offline_peer_get_name(
         tox: *const Tox,
         conference_number: u32,
         offline_peer_number: u32,
         name: *mut u8,
-        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+        error: *mut ConferencePeerQueryError,
     ) -> bool;
     pub fn tox_conference_offline_peer_get_public_key(
         tox: *const Tox,
         conference_number: u32,
         offline_peer_number: u32,
         public_key: *mut u8,
-        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+        error: *mut ConferencePeerQueryError,
     ) -> bool;
     pub fn tox_conference_offline_peer_get_last_active(
         tox: *const Tox,
         conference_number: u32,
         offline_peer_number: u32,
-        error: *mut TOX_ERR_CONFERENCE_PEER_QUERY,
+        error: *mut ConferencePeerQueryError,
     ) -> u64;
-}
-
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum TOX_ERR_CONFERENCE_INVITE {
-    TOX_ERR_CONFERENCE_INVITE_OK = 0,
-    TOX_ERR_CONFERENCE_INVITE_CONFERENCE_NOT_FOUND = 1,
-    TOX_ERR_CONFERENCE_INVITE_FAIL_SEND = 2,
-    TOX_ERR_CONFERENCE_INVITE_NO_CONNECTION = 3,
-}
-
-extern "C" {
     pub fn tox_conference_invite(
         tox: *mut Tox,
         friend_number: u32,
         conference_number: u32,
-        error: *mut TOX_ERR_CONFERENCE_INVITE,
+        error: *mut ConferenceInviteError,
     ) -> bool;
-}
-
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum TOX_ERR_CONFERENCE_JOIN {
-    TOX_ERR_CONFERENCE_JOIN_OK = 0,
-    TOX_ERR_CONFERENCE_JOIN_INVALID_LENGTH = 1,
-    TOX_ERR_CONFERENCE_JOIN_WRONG_TYPE = 2,
-    TOX_ERR_CONFERENCE_JOIN_FRIEND_NOT_FOUND = 3,
-    TOX_ERR_CONFERENCE_JOIN_DUPLICATE = 4,
-    TOX_ERR_CONFERENCE_JOIN_INIT_FAIL = 5,
-    TOX_ERR_CONFERENCE_JOIN_FAIL_SEND = 6,
-}
-
-extern "C" {
     pub fn tox_conference_join(
         tox: *mut Tox,
         friend_number: u32,
         cookie: *const u8,
         length: usize,
-        error: *mut TOX_ERR_CONFERENCE_JOIN,
+        error: *mut ConferenceJoinError,
     ) -> u32;
-}
-
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum TOX_ERR_CONFERENCE_SEND_MESSAGE {
-    TOX_ERR_CONFERENCE_SEND_MESSAGE_OK = 0,
-    TOX_ERR_CONFERENCE_SEND_MESSAGE_CONFERENCE_NOT_FOUND = 1,
-    TOX_ERR_CONFERENCE_SEND_MESSAGE_TOO_LONG = 2,
-    TOX_ERR_CONFERENCE_SEND_MESSAGE_NO_CONNECTION = 3,
-    TOX_ERR_CONFERENCE_SEND_MESSAGE_FAIL_SEND = 4,
-}
-
-extern "C" {
     pub fn tox_conference_send_message(
         tox: *mut Tox,
         conference_number: u32,
         type_: MessageType,
         message: *const u8,
         length: usize,
-        error: *mut TOX_ERR_CONFERENCE_SEND_MESSAGE,
+        error: *mut ConferenceSendError,
     ) -> bool;
-}
-
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum TOX_ERR_CONFERENCE_TITLE {
-    TOX_ERR_CONFERENCE_TITLE_OK = 0,
-    TOX_ERR_CONFERENCE_TITLE_CONFERENCE_NOT_FOUND = 1,
-    TOX_ERR_CONFERENCE_TITLE_INVALID_LENGTH = 2,
-    TOX_ERR_CONFERENCE_TITLE_FAIL_SEND = 3,
-}
-
-extern "C" {
     pub fn tox_conference_get_title_size(
         tox: *const Tox,
         conference_number: u32,
-        error: *mut TOX_ERR_CONFERENCE_TITLE,
+        error: *mut ConferenceTitleError,
     ) -> usize;
     pub fn tox_conference_get_title(
         tox: *const Tox,
         conference_number: u32,
         title: *mut u8,
-        error: *mut TOX_ERR_CONFERENCE_TITLE,
+        error: *mut ConferenceTitleError,
     ) -> bool;
     pub fn tox_conference_set_title(
         tox: *mut Tox,
         conference_number: u32,
         title: *const u8,
         length: usize,
-        error: *mut TOX_ERR_CONFERENCE_TITLE,
+        error: *mut ConferenceTitleError,
     ) -> bool;
     pub fn tox_conference_get_chatlist_size(tox: *const Tox) -> usize;
     pub fn tox_conference_get_chatlist(tox: *const Tox, chatlist: *mut u32);
@@ -1055,7 +988,11 @@ extern "C" {
         conference_number: u32,
         error: *mut TOX_ERR_CONFERENCE_GET_TYPE,
     ) -> ConferenceType;
-    pub fn tox_conference_get_id(tox: *const Tox, conference_number: u32, id: *mut u8) -> bool;
+    pub fn tox_conference_get_id(
+        tox: *const Tox,
+        conference_number: u32,
+        id: *mut u8
+    ) -> bool;
 }
 
 #[repr(u32)]
@@ -1089,19 +1026,6 @@ extern "C" {
         uid: *const u8,
         error: *mut TOX_ERR_CONFERENCE_BY_UID,
     ) -> u32;
-}
-
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum FriendCustomPacketError {
-    TOX_ERR_FRIEND_CUSTOM_PACKET_OK = 0,
-    TOX_ERR_FRIEND_CUSTOM_PACKET_NULL = 1,
-    TOX_ERR_FRIEND_CUSTOM_PACKET_FRIEND_NOT_FOUND = 2,
-    TOX_ERR_FRIEND_CUSTOM_PACKET_FRIEND_NOT_CONNECTED = 3,
-    TOX_ERR_FRIEND_CUSTOM_PACKET_INVALID = 4,
-    TOX_ERR_FRIEND_CUSTOM_PACKET_EMPTY = 5,
-    TOX_ERR_FRIEND_CUSTOM_PACKET_TOO_LONG = 6,
-    TOX_ERR_FRIEND_CUSTOM_PACKET_SENDQ = 7,
 }
 
 extern "C" {
