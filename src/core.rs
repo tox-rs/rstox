@@ -237,6 +237,10 @@ pub enum Event {
     FriendStatus(u32, UserStatus),
     FriendConnectionStatus(u32, Connection),
     FriendTyping(u32, bool),
+    FriendReadReceipt {
+        friend: u32,
+        message_id: u32,
+    },
 
     ConferenceInvite {
         friend: u32,
@@ -427,6 +431,7 @@ impl Tox {
             ll::tox_callback_friend_status(tox, Some(on_friend_status));
             ll::tox_callback_friend_connection_status(tox, Some(on_friend_connection_status));
             ll::tox_callback_friend_typing(tox, Some(on_friend_typing));
+            ll::tox_callback_friend_read_receipt(tox, Some(on_friend_read_receipt));
 
             ll::tox_callback_conference_invite(tox, Some(on_conference_invite));
             ll::tox_callback_conference_connected(tox, Some(on_conference_connected));
@@ -1210,6 +1215,20 @@ extern fn on_friend_typing(_: *mut ll::Tox, fnum: u32, is_typing: bool, chan: *m
     unsafe {
         let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         tx.send(FriendTyping(fnum, is_typing)).unwrap();
+    }
+}
+
+extern fn on_friend_read_receipt(
+    _: *mut ll::Tox,
+    friend: u32,
+    message_id: u32,
+    chan: *mut c_void
+) {
+    unsafe {
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
+        tx.send(FriendReadReceipt {
+            friend, message_id
+        }).unwrap();
     }
 }
 
