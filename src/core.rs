@@ -108,6 +108,18 @@ pub struct Cookie {
     raw: Vec<u8>
 }
 
+impl Cookie {
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.raw
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Cookie {
+        Cookie {
+            raw: bytes.to_owned()
+        }
+    }
+}
+
 /// A Tox address consist of `PublicKey`, nospam and checksum
 #[repr(C)]
 #[derive(PartialEq, Clone, Debug)]
