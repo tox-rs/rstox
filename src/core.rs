@@ -578,6 +578,15 @@ impl Tox {
         }
     }
 
+    /// Get secret_key
+    pub fn get_secret_key(&self) -> SecretKey {
+        unsafe {
+            let mut sk: SecretKey = mem::uninitialized();
+            ll::tox_self_get_secret_key(self.raw, &mut sk as *mut _ as *mut u8);
+            sk
+        }
+    }
+
     /// Set the nickname for the Tox client
     pub fn set_name(&mut self, name: &str) -> Result<(), SetInfoError> {
         unsafe {
