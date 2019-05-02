@@ -1,5 +1,5 @@
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::{slice, mem, ffi, ptr, fmt};
+use std::{slice, mem, ffi, fmt};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -238,6 +238,10 @@ impl FromStr for PublicKey {
     }
 }
 
+pub struct SecretKey {
+    pub raw: [u8; SECRET_KEY_SIZE],
+}
+
 /// Tox events enum
 #[derive(Clone, Debug)]
 pub enum Event {
@@ -311,9 +315,11 @@ pub enum Event {
 /**
     ToxOptions provides options that tox will be initalized with.
 */
-#[derive(Copy, Clone)]
+
+//#[derive(Clone, Copy)]
 pub struct ToxOptions {
-    raw: ll::Tox_Options
+    raw: ll::Tox_Options,
+    sk_ptr: Option<*mut SecretKey>,
 }
 
 impl ToxOptions {
@@ -328,7 +334,21 @@ impl ToxOptions {
 
         ToxOptions {
             raw: raw_options,
+            sk_ptr: None,
         }
+    }
+
+    /// Set the given SecretKey so you can restore your Tox
+    pub fn set_secret_key(mut self, secret_key: SecretKey) -> ToxOptions {
+        if self.sk_ptr.is_some() {
+            panic!("SK has already been set");
+        }
+        let sk_ptr = Box::into_raw(Box::new(secret_key));
+        self.sk_ptr = Some(sk_ptr);
+        self.raw.savedata_type = SavedataType::SecretKey;
+        self.raw.savedata_data = sk_ptr as *const _;
+        self.raw.savedata_length = SECRET_KEY_SIZE;
+        self
     }
 
     /// Enable ipv6
@@ -356,6 +376,14 @@ impl ToxOptions {
         self.txo.proxy_port = port;
         self
     }*/
+}
+
+impl Drop for ToxOptions {
+    fn drop(&mut self) {
+        if let Some(sk_ptr) = self.sk_ptr {
+            unsafe { Box::from_raw(sk_ptr) };
+        }
+    }
 }
 
 pub struct ToxIter {
@@ -415,15 +443,12 @@ impl Tox {
         let tox = unsafe {
             match data {
                 Some(data) => {
-                    // opts.raw.savedata_type = SavedataType::ToxSave;
+                    opts.raw.savedata_type = SavedataType::ToxSave;
                     opts.raw.savedata_data = data.as_ptr();
                     opts.raw.savedata_length = data.len();
                     tox_try!(err, ll::tox_new(&opts.raw, &mut err))
                 },
                 None => {
-                    // opts.raw.savedata_type = SavedataType::None;
-                    opts.raw.savedata_data = ptr::null();
-                    opts.raw.savedata_length = 0;
                     tox_try!(err, ll::tox_new(&opts.raw, &mut err))
                 }
             }
