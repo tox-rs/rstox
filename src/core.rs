@@ -26,7 +26,8 @@ pub const ADDRESS_SIZE:                 usize = PUBLIC_KEY_SIZE + 6;
 // pub const HASH_LENGTH:                  usize = 32;
 // pub const FILE_ID_LENGTH:               usize = 32;
 // pub const MAX_FILENAME_LENGTH:          usize = 255;
-pub const TOX_CONFERENCE_ID_SIZE:       usize = 32;
+pub const CONFERENCE_ID_SIZE:       usize = 32;
+pub const FILE_ID_LENGTH:           usize = 32;
 
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -92,6 +93,11 @@ pub enum FileControl {
     Cancel = 2,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct FileId {
+    raw: [u8; FILE_ID_LENGTH],
+}
+
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ConferenceType {
@@ -100,7 +106,7 @@ pub enum ConferenceType {
 }
 
 pub struct ConferenceId {
-    raw: [u8; TOX_CONFERENCE_ID_SIZE]
+    raw: [u8; CONFERENCE_ID_SIZE]
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -256,6 +262,31 @@ pub enum Event {
     FriendReadReceipt {
         friend: u32,
         message_id: u32,
+    },
+
+    FileControlReceive {
+        friend: u32,
+        file_number: u32,
+        control: FileControl,
+    },
+    FileChunkRequest {
+        friend: u32,
+        file_number: u32,
+        position: usize,
+        length: usize,
+    },
+    FileReceive {
+        friend: u32,
+        file_number: u32,
+        kind: u32,
+        file_size: usize,
+        file_name: String,
+    },
+    FileChunkReceive {
+        friend: u32,
+        file_number: u32,
+        position: usize,
+        data: Vec<u8>,
     },
 
     ConferenceInvite {
@@ -469,6 +500,11 @@ impl Tox {
             ll::tox_callback_friend_connection_status(tox, Some(on_friend_connection_status));
             ll::tox_callback_friend_typing(tox, Some(on_friend_typing));
             ll::tox_callback_friend_read_receipt(tox, Some(on_friend_read_receipt));
+
+            ll::tox_callback_file_recv_control(tox, Some(on_file_control));
+            ll::tox_callback_file_chunk_request(tox, Some(on_file_chunk_request));
+            ll::tox_callback_file_recv(tox, Some(on_file_receive));
+            ll::tox_callback_file_recv_chunk(tox, Some(on_file_chunk_receive));
 
             ll::tox_callback_conference_invite(tox, Some(on_conference_invite));
             ll::tox_callback_conference_connected(tox, Some(on_conference_connected));
@@ -813,6 +849,111 @@ impl Tox {
         Ok(msg_id)
     }
 
+    pub fn control_file(
+        &mut self,
+        friend: u32,
+        file_number: u32,
+        control: FileControl
+    ) -> Result<(), FileControlError> {
+        unsafe {
+            tox_try!(err, ll::tox_file_control(
+                self.raw,
+                friend,
+                file_number,
+                control,
+                &mut err
+            ));
+
+            Ok(())
+        }
+    }
+
+    pub fn seek_file(
+        &mut self,
+        friend: u32,
+        file_number: u32,
+        postition: usize
+    ) -> Result<(), FileSeekError> {
+        unsafe {
+            tox_try!(err, ll::tox_file_seek(
+                self.raw,
+                friend,
+                file_number,
+                postition as u64,
+                &mut err
+            ));
+
+            Ok(())
+        }
+    }
+
+    pub fn get_file_id(
+        &mut self,
+        friend: u32,
+        file_number: u32,
+    ) -> Result<FileId, FileGetError> {
+        unsafe {
+            let mut raw: [u8; FILE_ID_LENGTH] = mem::uninitialized();
+
+            tox_try!(err, ll::tox_file_get_file_id(
+                self.raw,
+                friend,
+                file_number,
+                raw.as_mut_ptr(),
+                &mut err
+            ));
+
+            Ok(FileId {
+                raw
+            })
+        }
+    }
+
+    pub fn send_file(
+        &mut self,
+        friend: u32,
+        kind: FileKind,
+        file_size: usize,
+        file_name: &str,
+    ) -> Result<u32, FileSendError> {
+        unsafe {
+            let file_number = tox_try!(err, ll::tox_file_send(
+                self.raw,
+                friend,
+                kind as u32,
+                file_size as u64,
+                std::ptr::null(),
+                file_name.as_ptr(),
+                file_name.len(),
+                &mut err
+            ));
+
+            Ok(file_number)
+        }
+    }
+
+    pub fn send_file_chunk(
+        &mut self,
+        friend: u32,
+        file_number: u32,
+        position: usize,
+        data: &[u8]
+    ) -> Result<(), FileSendChunkError> {
+        unsafe {
+            tox_try!(err, ll::tox_file_send_chunk(
+                self.raw,
+                friend,
+                file_number,
+                position as u64,
+                data.as_ptr(),
+                data.len(),
+                &mut err
+            ));
+
+            Ok(())
+        }
+    }
+
     // Conference stuff
 
     pub fn new_conference(&mut self) -> Result<u32, ()> {
@@ -1139,7 +1280,7 @@ impl Tox {
         conference_number: u32
     ) -> Option<ConferenceId> {
         unsafe {
-            let mut raw = [0; TOX_CONFERENCE_ID_SIZE];
+            let mut raw = [0; CONFERENCE_ID_SIZE];
 
             let exists = ll::tox_conference_get_id(
                 self.raw,
@@ -1278,6 +1419,92 @@ extern fn on_friend_read_receipt(
     }
 }
 
+// File transfer
+
+extern fn on_file_control(
+    _: *mut ll::Tox,
+    friend: u32,
+    file_number: u32,
+    control: FileControl,
+    chan: *mut c_void
+) {
+    unsafe {
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
+        tx.send(FileControlReceive {
+            friend,
+            file_number,
+            control
+        }).unwrap()
+    }
+}
+
+extern fn on_file_chunk_request(
+    _: *mut ll::Tox,
+    friend: u32,
+    file_number: u32,
+    position: u64,
+    length: usize,
+    chan: *mut c_void
+) {
+    unsafe {
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
+        tx.send(FileChunkRequest {
+            friend,
+            file_number,
+            position: position as usize,
+            length: length as usize,
+        }).unwrap()
+    }
+}
+
+extern fn on_file_receive(
+    _: *mut ll::Tox,
+    friend: u32,
+    file_number: u32,
+    kind: u32,
+    file_size: u64,
+    file_name: *const u8,
+    file_name_size: usize,
+    chan: *mut c_void
+) {
+    unsafe {
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
+        let file_name =
+            String::from_utf8_lossy(
+                slice::from_raw_parts(file_name, file_name_size)
+            )
+            .into_owned();
+        tx.send(FileReceive {
+            friend,
+            file_number,
+            kind,
+            file_size: file_size as usize,
+            file_name
+        }).unwrap()
+    }
+}
+
+extern fn on_file_chunk_receive(
+    _: *mut ll::Tox,
+    friend: u32,
+    file_number: u32,
+    position: u64,
+    data: *const u8,
+    data_len: usize,
+    chan: *mut c_void
+) {
+    unsafe {
+        let tx: &mut Sender<Event> = &mut *(chan as *mut _);
+        let data = Vec::from(slice::from_raw_parts(data, data_len));
+        tx.send(FileChunkReceive {
+            friend,
+            file_number,
+            position: position as usize,
+            data
+        }).unwrap()
+    }
+}
+
 // Conference callbacks
 
 extern fn on_conference_invite(
@@ -1297,7 +1524,6 @@ extern fn on_conference_invite(
             friend, kind, cookie,
         }).unwrap()
     }
-
 }
 
 extern fn on_conference_connected(
