@@ -248,6 +248,20 @@ pub struct SecretKey {
     pub raw: [u8; SECRET_KEY_SIZE],
 }
 
+impl FromStr for SecretKey {
+    type Err = ();
+    fn from_str(s: &str) -> Result<SecretKey, ()> {
+        if s.len() != 2 * SECRET_KEY_SIZE {
+            return Err(());
+        }
+
+        let mut id = [0u8; SECRET_KEY_SIZE];
+
+        parse_hex(s, &mut id[..])?;
+        Ok(SecretKey { raw: id })
+    }
+}
+
 /// Tox events enum
 #[derive(Clone, Debug)]
 pub enum Event {
