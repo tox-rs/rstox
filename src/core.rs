@@ -248,6 +248,16 @@ pub struct SecretKey {
     pub raw: [u8; SECRET_KEY_SIZE],
 }
 
+impl fmt::Display for SecretKey {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        for &n in self.raw.iter() {
+            write!(fmt, "{:02X}", n)?;
+        }
+
+        Ok(())
+    }
+}
+
 impl FromStr for SecretKey {
     type Err = ();
     fn from_str(s: &str) -> Result<SecretKey, ()> {
