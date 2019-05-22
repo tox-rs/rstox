@@ -272,6 +272,35 @@ impl FromStr for SecretKey {
     }
 }
 
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub struct Nospam {
+    pub raw: [u8; 4],
+}
+
+impl fmt::Display for Nospam {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        for &n in self.raw.iter() {
+            write!(fmt, "{:02X}", n)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl FromStr for Nospam {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Nospam, ()> {
+        if s.len() != 8 {
+            return Err(());
+        }
+
+        let mut id = [0u8; 4];
+
+        parse_hex(s, &mut id[..])?;
+        Ok(Nospam { raw: id })
+    }
+}
+
 /// Tox events enum
 #[derive(Clone, Debug)]
 pub enum Event {
@@ -614,17 +643,20 @@ impl Tox {
     }
 
     /// Get self nospam
-    pub fn get_nospam(&self) -> [u8; 4] {
+    pub fn get_nospam(&self) -> Nospam {
         unsafe {
             let nospam = ll::tox_self_get_nospam(self.raw);
-            mem::transmute(nospam)
+
+            Nospam {
+                raw: mem::transmute(nospam)
+            }
         }
     }
 
     /// Set self nospam
-    pub fn set_nospam(&mut self, nospam: [u8; 4]) {
+    pub fn set_nospam(&mut self, nospam: Nospam) {
         unsafe {
-            let nospam: u32 = mem::transmute(nospam);
+            let nospam: u32 = mem::transmute(nospam.raw);
             ll::tox_self_set_nospam(self.raw, nospam);
         }
     }
