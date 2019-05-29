@@ -98,6 +98,29 @@ pub struct FileId {
     raw: [u8; FILE_ID_LENGTH],
 }
 
+impl fmt::Display for FileId {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        for &n in self.raw.iter() {
+            write!(fmt, "{:02X}", n)?;
+        }
+        Ok(())
+    }
+}
+
+impl FromStr for FileId {
+    type Err = ();
+    fn from_str(s: &str) -> Result<FileId, ()> {
+        if s.len() != 2 * FILE_ID_LENGTH {
+            return Err(());
+        }
+
+        let mut id = [0u8; FILE_ID_LENGTH];
+
+        parse_hex(s, &mut id[..])?;
+        Ok(FileId { raw: id })
+    }
+}
+
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ConferenceType {
@@ -288,7 +311,7 @@ pub enum Event {
         message_id: u32,
     },
 
-    FileControlReceive {
+    FileControlReceipt {
         friend: u32,
         file_number: u32,
         control: FileControl,
@@ -299,14 +322,14 @@ pub enum Event {
         position: usize,
         length: usize,
     },
-    FileReceive {
+    FileReceipt {
         friend: u32,
         file_number: u32,
         kind: u32,
         file_size: usize,
         file_name: String,
     },
-    FileChunkReceive {
+    FileChunkReceipt {
         friend: u32,
         file_number: u32,
         position: usize,
@@ -956,6 +979,30 @@ impl Tox {
         }
     }
 
+    pub fn send_file_with_id(
+        &mut self,
+        friend: u32,
+        kind: FileKind,
+        file_size: usize,
+        file_id: FileId,
+        file_name: &str,
+    ) -> Result<u32, FileSendError> {
+        unsafe {
+            let file_number = tox_try!(err, ll::tox_file_send(
+                self.raw,
+                friend,
+                kind as u32,
+                file_size as u64,
+                file_id.raw.as_ptr(),
+                file_name.as_ptr(),
+                file_name.len(),
+                &mut err
+            ));
+
+            Ok(file_number)
+        }
+    }
+
     pub fn send_file_chunk(
         &mut self,
         friend: u32,
@@ -1454,7 +1501,7 @@ extern fn on_file_control(
 ) {
     unsafe {
         let tx: &mut Sender<Event> = &mut *(chan as *mut _);
-        tx.send(FileControlReceive {
+        tx.send(FileControlReceipt {
             friend,
             file_number,
             control
@@ -1498,7 +1545,7 @@ extern fn on_file_receive(
                 slice::from_raw_parts(file_name, file_name_size)
             )
             .into_owned();
-        tx.send(FileReceive {
+        tx.send(FileReceipt {
             friend,
             file_number,
             kind,
@@ -1520,7 +1567,7 @@ extern fn on_file_chunk_receive(
     unsafe {
         let tx: &mut Sender<Event> = &mut *(chan as *mut _);
         let data = Vec::from(slice::from_raw_parts(data, data_len));
-        tx.send(FileChunkReceive {
+        tx.send(FileChunkReceipt {
             friend,
             file_number,
             position: position as usize,
