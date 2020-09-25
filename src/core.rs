@@ -5,6 +5,7 @@ use std::rc::Rc;
 use std::time::Duration;
 use std::thread::sleep;
 use std::str::FromStr;
+use std::mem::MaybeUninit;
 
 use libc::{c_uint, c_void};
 
@@ -227,9 +228,9 @@ fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
     for i in 0..buf.len() {
         for j in 0..2 {
             buf[i] = (buf[i] << 4) + match s.as_bytes()[2*i + j] as char {
-                c @ '0' ... '9' => (c as u8) - ('0' as u8),
-                c @ 'a' ... 'f' => (c as u8) - ('a' as u8) + 10,
-                c @ 'A' ... 'F' => (c as u8) - ('A' as u8) + 10,
+                c @ '0' ..= '9' => (c as u8) - ('0' as u8),
+                c @ 'a' ..= 'f' => (c as u8) - ('a' as u8) + 10,
+                c @ 'A' ..= 'F' => (c as u8) - ('A' as u8) + 10,
                 _              => return Err(()),
             }
         }
@@ -433,10 +434,10 @@ impl ToxOptions {
     /// Create a default ToxOptions struct
     pub fn new() -> ToxOptions {
         let raw_options = unsafe {
-            let mut raw: ll::Tox_Options = std::mem::uninitialized();
-            ll::tox_options_default(&mut raw);
+            let mut raw = MaybeUninit::uninit();
+            ll::tox_options_default(raw.as_mut_ptr());
 
-            raw
+            raw.assume_init()
         };
 
         ToxOptions {
@@ -510,11 +511,11 @@ impl Iterator for ToxIter {
 
 macro_rules! tox_try {
     ($err:ident, $exp:expr) => {{
-        let mut $err = ::std::mem::uninitialized();
+        let mut $err = MaybeUninit::uninit();
         let res = $exp;
-        match $err as c_uint {
+        match $err.assume_init() as c_uint {
             0 => {},
-            _ => return Err($err),
+            _ => return Err($err.assume_init()),
         };
         res
     }};
@@ -522,9 +523,9 @@ macro_rules! tox_try {
 
 macro_rules! tox_option {
     ($err:ident, $exp:expr) => {{
-        let mut $err = ::std::mem::uninitialized();
+        let mut $err = MaybeUninit::uninit();
         let res = $exp;
-        match $err as c_uint {
+        match $err.assume_init() as c_uint {
             0 => {},
             _ => return None,
         };
@@ -553,10 +554,10 @@ impl Tox {
                     opts.raw.savedata_type = SavedataType::ToxSave;
                     opts.raw.savedata_data = data.as_ptr();
                     opts.raw.savedata_length = data.len();
-                    tox_try!(err, ll::tox_new(&opts.raw, &mut err))
+                    tox_try!(err, ll::tox_new(&opts.raw, err.as_mut_ptr()))
                 },
                 None => {
-                    tox_try!(err, ll::tox_new(&opts.raw, &mut err))
+                    tox_try!(err, ll::tox_new(&opts.raw, err.as_mut_ptr()))
                 }
             }
         };
@@ -606,7 +607,6 @@ impl Tox {
     /// Ticks the Tox and returns an iterator to the Tox events
     pub fn iter(&mut self) -> ToxIter {
         self.tick();
-
         ToxIter::new(self.event_rx.clone())
     }
 
@@ -646,7 +646,7 @@ impl Tox {
         unsafe {
             let c_host = ffi::CString::new(host).unwrap();
             let c_pk: *const u8 = &public_key as *const _ as *const _;
-            tox_try!(err, ll::tox_bootstrap(self.raw, c_host.as_ptr(), port, c_pk, &mut err));
+            tox_try!(err, ll::tox_bootstrap(self.raw, c_host.as_ptr(), port, c_pk, err.as_mut_ptr()));
         }
         Ok(())
     }
@@ -659,9 +659,9 @@ impl Tox {
     /// Get self tox address
     pub fn get_address(&self) -> Address {
         unsafe {
-            let mut addr: Address = mem::uninitialized();
+            let mut addr = MaybeUninit::uninit();
             ll::tox_self_get_address(self.raw, &mut addr as *mut _ as *mut u8);
-            addr
+            addr.assume_init()
         }
     }
 
@@ -687,25 +687,25 @@ impl Tox {
     /// Get self public key
     pub fn get_public_key(&self) -> PublicKey {
         unsafe {
-            let mut pk: PublicKey = mem::uninitialized();
+            let mut pk = MaybeUninit::uninit();
             ll::tox_self_get_public_key(self.raw, &mut pk as *mut _ as *mut u8);
-            pk
+            pk.assume_init()
         }
     }
 
     /// Get secret_key
     pub fn get_secret_key(&self) -> SecretKey {
         unsafe {
-            let mut sk: SecretKey = mem::uninitialized();
+            let mut sk = MaybeUninit::uninit();
             ll::tox_self_get_secret_key(self.raw, &mut sk as *mut _ as *mut u8);
-            sk
+            sk.assume_init()
         }
     }
 
     /// Set the nickname for the Tox client
     pub fn set_name(&mut self, name: &str) -> Result<(), SetInfoError> {
         unsafe {
-            tox_try!(err, ll::tox_self_set_name(self.raw, name.as_ptr(), name.len(), &mut err));
+            tox_try!(err, ll::tox_self_set_name(self.raw, name.as_ptr(), name.len(), err.as_mut_ptr()));
         }
         Ok(())
     }
@@ -724,7 +724,7 @@ impl Tox {
     /// Set self status message
     pub fn set_status_message(&mut self, message: &str) -> Result<(), SetInfoError> {
         unsafe {
-            tox_try!(err, ll::tox_self_set_status_message(self.raw, message.as_ptr(), message.len(), &mut err));
+            tox_try!(err, ll::tox_self_set_status_message(self.raw, message.as_ptr(), message.len(), err.as_mut_ptr()));
         }
         Ok(())
     }
@@ -769,7 +769,7 @@ impl Tox {
             let c_addr = address as *const _ as *const u8;
             tox_try!(
                 err,
-                ll::tox_friend_add(self.raw, c_addr, message.as_ptr(), message.len(), &mut err)
+                ll::tox_friend_add(self.raw, c_addr, message.as_ptr(), message.len(), err.as_mut_ptr())
             );
         }
         Ok(())
@@ -790,7 +790,7 @@ impl Tox {
     pub fn add_friend_norequest(&mut self, address: &PublicKey) -> Result<(), FriendAddError> {
         unsafe {
             let c_addr = address as *const _ as *const u8;
-            tox_try!(err, ll::tox_friend_add_norequest(self.raw, c_addr, &mut err));
+            tox_try!(err, ll::tox_friend_add_norequest(self.raw, c_addr, err.as_mut_ptr()));
         }
         Ok(())
     }
@@ -804,8 +804,8 @@ impl Tox {
     */
     pub fn delete_friend(&mut self, fnum: u32) -> Result<(), ()> {
         unsafe {
-            let mut err: ll::TOX_ERR_FRIEND_DELETE = mem::uninitialized();
-            if !ll::tox_friend_delete(self.raw, fnum, &mut err as *mut _) {
+            let mut err = MaybeUninit::uninit();
+            if !ll::tox_friend_delete(self.raw, fnum, err.as_mut_ptr()) {
                 return Err(())
             }
         }
@@ -816,7 +816,7 @@ impl Tox {
     pub fn friend_by_public_key(&self, public_key: PublicKey) -> Option<u32> {
         unsafe {
             let pk: *const u8 = &public_key as *const _ as *const _;
-            let fnum = tox_option!(err, ll::tox_friend_by_public_key(self.raw, pk, &mut err));
+            let fnum = tox_option!(err, ll::tox_friend_by_public_key(self.raw, pk, err.as_mut_ptr()));
             Some(fnum)
         }
     }
@@ -839,10 +839,10 @@ impl Tox {
 
     pub fn get_friend_public_key(&self, fnum: u32) -> Option<PublicKey> {
         unsafe {
-            let mut public_key: PublicKey = mem::uninitialized();
+            let mut public_key = MaybeUninit::uninit();
             let pk: *mut u8 = &mut public_key as *mut _ as *mut _;
-            tox_option!(err, ll::tox_friend_get_public_key(self.raw, fnum, pk, &mut err));
-            Some(public_key)
+            tox_option!(err, ll::tox_friend_get_public_key(self.raw, fnum, pk, err.as_mut_ptr()));
+            Some(public_key.assume_init())
         }
     }
 
@@ -855,7 +855,7 @@ impl Tox {
     */
     pub fn get_friend_last_online(&self, fnum: u32) -> Option<u64> {
         unsafe {
-            Some(tox_option!(err, ll::tox_friend_get_last_online(self.raw, fnum, &mut err)))
+            Some(tox_option!(err, ll::tox_friend_get_last_online(self.raw, fnum, err.as_mut_ptr())))
         }
     }
 
@@ -863,11 +863,11 @@ impl Tox {
     pub fn get_friend_name(&self, fnum: u32) -> Option<String> {
         unsafe {
             let len = tox_option!(err, ll::tox_friend_get_name_size(self.raw,
-                                fnum, &mut err));
+                                fnum, err.as_mut_ptr()));
             let mut bytes: Vec<u8> = Vec::with_capacity(len);
             bytes.set_len(len);
             tox_option!(err, ll::tox_friend_get_name(self.raw, fnum,
-                    bytes.as_mut_ptr(), &mut err));
+                    bytes.as_mut_ptr(), err.as_mut_ptr()));
             Some(String::from_utf8_unchecked(bytes))
         }
     }
@@ -876,11 +876,11 @@ impl Tox {
     pub fn get_friend_status_message(&self, fnum: u32) -> Option<String> {
         unsafe {
             let len = tox_option!(err, ll::tox_friend_get_status_message_size(self.raw,
-                                fnum, &mut err));
+                                fnum, err.as_mut_ptr()));
             let mut bytes: Vec<u8> = Vec::with_capacity(len);
             bytes.set_len(len);
             tox_option!(err, ll::tox_friend_get_status_message(self.raw, fnum,
-                    bytes.as_mut_ptr(), &mut err));
+                    bytes.as_mut_ptr(), err.as_mut_ptr()));
             Some(String::from_utf8_unchecked(bytes))
         }
     }
@@ -888,14 +888,14 @@ impl Tox {
     /// Returns friend status, or, if there is an error, `None`.
     pub fn get_friend_status(&self, fnum: u32) -> Option<UserStatus> {
         unsafe {
-            Some(tox_option!(err, ll::tox_friend_get_status(self.raw, fnum, &mut err)))
+            Some(tox_option!(err, ll::tox_friend_get_status(self.raw, fnum, err.as_mut_ptr())))
         }
     }
 
     /// Return status of connection of friend, or if friend doesn't exist, `None`.
     pub fn get_friend_connection_status(&self, fnum: u32) -> Option<Connection> {
         unsafe {
-            Some(tox_option!(err, ll::tox_friend_get_connection_status(self.raw, fnum, &mut err)))
+            Some(tox_option!(err, ll::tox_friend_get_connection_status(self.raw, fnum, err.as_mut_ptr())))
         }
     }
     // END OF FRIEND STUFF
@@ -922,7 +922,7 @@ impl Tox {
         let msg_id = unsafe {
             tox_try!(
                 err,
-                ll::tox_friend_send_message(self.raw, fnum, kind, message.as_ptr(), message.len(), &mut err)
+                ll::tox_friend_send_message(self.raw, fnum, kind, message.as_ptr(), message.len(), err.as_mut_ptr())
             )
         };
         Ok(msg_id)
@@ -940,7 +940,7 @@ impl Tox {
                 friend,
                 file_number,
                 control,
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(())
@@ -959,7 +959,7 @@ impl Tox {
                 friend,
                 file_number,
                 postition as u64,
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(())
@@ -972,18 +972,18 @@ impl Tox {
         file_number: u32,
     ) -> Result<FileId, FileGetError> {
         unsafe {
-            let mut raw: [u8; FILE_ID_LENGTH] = mem::uninitialized();
+            let mut raw = MaybeUninit::<[u8; FILE_ID_LENGTH]>::uninit();
 
             tox_try!(err, ll::tox_file_get_file_id(
                 self.raw,
                 friend,
                 file_number,
-                raw.as_mut_ptr(),
-                &mut err
+                raw.as_mut_ptr() as *mut u8,
+                err.as_mut_ptr()
             ));
 
             Ok(FileId {
-                raw
+                raw: raw.assume_init()
             })
         }
     }
@@ -1004,7 +1004,7 @@ impl Tox {
                 std::ptr::null(),
                 file_name.as_ptr(),
                 file_name.len(),
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(file_number)
@@ -1028,7 +1028,7 @@ impl Tox {
                 file_id.raw.as_ptr(),
                 file_name.as_ptr(),
                 file_name.len(),
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(file_number)
@@ -1050,7 +1050,7 @@ impl Tox {
                 position as u64,
                 data.as_ptr(),
                 data.len(),
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(())
@@ -1061,10 +1061,10 @@ impl Tox {
 
     pub fn new_conference(&mut self) -> Result<u32, ()> {
         unsafe {
-            let mut err = ::std::mem::uninitialized();
-            let res = ll::tox_conference_new(self.raw, &mut err);
+            let mut err = MaybeUninit::uninit();
+            let res = ll::tox_conference_new(self.raw, err.as_mut_ptr());
 
-            match err as c_uint {
+            match err.assume_init() as c_uint {
                 0 => return Ok(res),
                 _ => return Err(()),
             };
@@ -1076,7 +1076,7 @@ impl Tox {
             tox_option!(err, ll::tox_conference_delete(
                 self.raw,
                 conference_number,
-                &mut err
+                err.as_mut_ptr()
             ));
             Some(())
         }
@@ -1089,7 +1089,7 @@ impl Tox {
             let count = tox_try!(err, ll::tox_conference_peer_count(
                 self.raw(),
                 conference_number,
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(count)
@@ -1106,7 +1106,7 @@ impl Tox {
                 self.raw,
                 conference_number,
                 peer_number,
-                &mut err
+                err.as_mut_ptr()
             ));
 
             let mut name = Vec::with_capacity(size);
@@ -1116,7 +1116,7 @@ impl Tox {
                 conference_number,
                 peer_number,
                 name.as_mut_ptr(),
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(String::from_utf8_unchecked(name))
@@ -1129,18 +1129,17 @@ impl Tox {
         peer_number: u32,
     ) -> Result<PublicKey, ConferencePeerQueryError> {
         unsafe {
-            let mut raw: [u8; PUBLIC_KEY_SIZE] = mem::uninitialized();
-
+            let mut raw = MaybeUninit::<[u8; PUBLIC_KEY_SIZE]>::uninit();
             tox_try!(err, ll::tox_conference_peer_get_public_key(
                 self.raw,
                 conference_number,
                 peer_number,
-                raw.as_mut_ptr(),
-                &mut err
+                raw.as_mut_ptr() as *mut u8,
+                err.as_mut_ptr()
             ));
 
             Ok(PublicKey {
-                raw
+                raw: raw.assume_init()
             })
         }
     }
@@ -1156,7 +1155,7 @@ impl Tox {
                     self.raw,
                     conference_number,
                     peer_number,
-                    &mut err
+                    err.as_mut_ptr()
                 ));
 
             Ok(is_ours)
@@ -1171,7 +1170,7 @@ impl Tox {
             let count = tox_try!(err, ll::tox_conference_offline_peer_count(
                 self.raw,
                 conference_number,
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(count)
@@ -1188,7 +1187,7 @@ impl Tox {
                 self.raw,
                 conference_number,
                 peer_number,
-                &mut err
+                err.as_mut_ptr()
             ));
 
             let mut name = Vec::with_capacity(size);
@@ -1198,7 +1197,7 @@ impl Tox {
                 conference_number,
                 peer_number,
                 name.as_mut_ptr(),
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(String::from_utf8_unchecked(name))
@@ -1211,18 +1210,18 @@ impl Tox {
         peer_number: u32
     ) -> Result<PublicKey, ConferencePeerQueryError> {
         unsafe {
-            let mut raw: [u8; PUBLIC_KEY_SIZE] = mem::uninitialized();
+            let mut raw = MaybeUninit::<[u8; PUBLIC_KEY_SIZE]>::uninit();
 
             tox_try!(err, ll::tox_conference_peer_get_public_key(
                 self.raw,
                 conference_number,
                 peer_number,
-                raw.as_mut_ptr(),
-                &mut err
+                raw.as_mut_ptr() as *mut u8,
+                err.as_mut_ptr()
             ));
 
             Ok(PublicKey {
-                raw
+                raw: raw.assume_init()
             })
         }
     }
@@ -1237,7 +1236,7 @@ impl Tox {
                 self.raw,
                 conference_number,
                 peer_number,
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(time)
@@ -1254,7 +1253,7 @@ impl Tox {
                 self.raw,
                 friend_number,
                 conference_number,
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(())
@@ -1272,7 +1271,7 @@ impl Tox {
                 friend_number,
                 cookie.raw.as_ptr(),
                 cookie.raw.len(),
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(conference)
@@ -1295,7 +1294,7 @@ impl Tox {
                 kind,
                 msg,
                 len,
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(())
@@ -1310,7 +1309,7 @@ impl Tox {
             let len = tox_try!(err, ll::tox_conference_get_title_size(
                 self.raw,
                 conference_number,
-                &mut err
+                err.as_mut_ptr()
             ));
 
             let mut title = Vec::with_capacity(len);
@@ -1319,7 +1318,7 @@ impl Tox {
                 self.raw,
                 conference_number,
                 title.as_mut_ptr(),
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(String::from_utf8_unchecked(title))
@@ -1339,7 +1338,7 @@ impl Tox {
                 conference_number,
                 title.as_ptr(),
                 len,
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Ok(())
@@ -1371,7 +1370,7 @@ impl Tox {
             let kind = tox_option!(err, ll::tox_conference_get_type(
                 self.raw,
                 conference_number,
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Some(kind)
@@ -1410,7 +1409,7 @@ impl Tox {
             let conf_num = tox_option!(err, ll::tox_conference_by_id(
                 self.raw,
                 id.raw.as_ptr(),
-                &mut err
+                err.as_mut_ptr()
             ));
 
             Some(conf_num)
@@ -1431,9 +1430,9 @@ impl Tox {
     #[inline]
     #[doc(hidden)]
     pub unsafe fn from_raw_tox(raw: *mut ll::Tox) -> Tox {
-        let mut tox: Tox = mem::zeroed();
-        tox.raw = raw;
-        tox
+        let mut tox = MaybeUninit::<Tox>::uninit();
+        (*tox.as_mut_ptr()).raw = raw;
+        tox.assume_init()
     }
 
     #[inline]
