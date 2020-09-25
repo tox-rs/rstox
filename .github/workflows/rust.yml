@@ -1,0 +1,38 @@
+name: Rust
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Toxcore
+      run: |
+        sudo apt-get install -y build-essential libtool autotools-dev automake checkinstall \
+          cmake check git yasm pkg-config libvpx-dev libopus-dev
+          
+        git clone -b 1.0.17 git://github.com/jedisct1/libsodium.git
+        cd libsodium
+        ./autogen.sh
+        ./configure && make
+        sudo checkinstall --install --pkgname libsodium --pkgversion 1.0.17 --nodoc -y
+        cd ..
+        
+        git clone -b v0.2.9 https://github.com/TokTok/c-toxcore.git
+        cd c-toxcore
+        mkdir _build && cd _build
+        cmake .. && make
+        sudo make install
+        cd ..
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
