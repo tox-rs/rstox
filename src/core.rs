@@ -19,7 +19,7 @@ pub mod errors;
 pub const PUBLIC_KEY_SIZE:              usize = 32;
 pub const SECRET_KEY_SIZE:              usize = 32;
 pub const ADDRESS_SIZE:                 usize = PUBLIC_KEY_SIZE + 6;
-// pub const MAX_NAME_LENGTH:              usize = 128;
+pub const MAX_NAME_LENGTH:              usize = 128;
 // pub const MAX_STATUSMESSAGE_LENGTH:     usize = 1007;
 // pub const MAX_FRIENDREQUEST_LENGTH:     usize = 1016;
 // pub const MAX_MESSAGE_LENGTH:           usize = 1372;
@@ -1109,17 +1109,18 @@ impl Tox {
                 err.as_mut_ptr()
             ));
 
-            let mut name = Vec::with_capacity(size);
+            let mut raw: [u8; MAX_NAME_LENGTH] = [0; MAX_NAME_LENGTH];
 
             tox_try!(err, ll::tox_conference_peer_get_name(
                 self.raw,
                 conference_number,
                 peer_number,
-                name.as_mut_ptr(),
+                raw.as_mut_ptr() as *mut u8,
                 err.as_mut_ptr()
             ));
 
-            Ok(String::from_utf8_unchecked(name))
+
+            Ok(String::from_utf8_lossy(&raw[..size]).to_string())
         }
     }
 
@@ -1190,17 +1191,17 @@ impl Tox {
                 err.as_mut_ptr()
             ));
 
-            let mut name = Vec::with_capacity(size);
+            let mut raw: [u8; MAX_NAME_LENGTH] = [0; MAX_NAME_LENGTH];
 
             tox_try!(err, ll::tox_conference_offline_peer_get_name(
                 self.raw,
                 conference_number,
                 peer_number,
-                name.as_mut_ptr(),
+                raw.as_mut_ptr() as *mut u8,
                 err.as_mut_ptr()
             ));
 
-            Ok(String::from_utf8_unchecked(name))
+            Ok(String::from_utf8_lossy(&raw[..size]).to_string())
         }
     }
 
@@ -1306,22 +1307,22 @@ impl Tox {
         conference_number: u32
     ) -> Result<String, ConferenceTitleError> {
         unsafe {
-            let len = tox_try!(err, ll::tox_conference_get_title_size(
+            let size = tox_try!(err, ll::tox_conference_get_title_size(
                 self.raw,
                 conference_number,
                 err.as_mut_ptr()
             ));
 
-            let mut title = Vec::with_capacity(len);
+            let mut raw: [u8; MAX_NAME_LENGTH] = [0; MAX_NAME_LENGTH];
 
             tox_try!(err, ll::tox_conference_get_title(
                 self.raw,
                 conference_number,
-                title.as_mut_ptr(),
+                raw.as_mut_ptr() as *mut u8,
                 err.as_mut_ptr()
             ));
 
-            Ok(String::from_utf8_unchecked(title))
+            Ok(String::from_utf8_lossy(&raw[..size]).to_string())
         }
     }
 
