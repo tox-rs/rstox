@@ -471,6 +471,12 @@ impl ToxOptions {
         self
     }
 
+    /// Disable UDP
+    pub fn no_lan(mut self) -> ToxOptions {
+        self.raw.local_discovery_enabled = false;
+        self
+    }
+
     /*
     /// Use a proxy
     pub fn proxy(mut self, ty: ProxyType, addr: &str, port: u16) -> ToxOptions {
